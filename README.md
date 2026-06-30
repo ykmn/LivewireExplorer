@@ -1,140 +1,187 @@
 # Livewire Browser
 
-Windows GUI-приложение для обзора Axia/Telos Livewire-сети: находит устройства (ноды, Engine, Fusion, кодеки, телефонные гибриды), показывает их IP, модель и список Livewire-каналов, позволяет прослушать любой канал на выбранном звуковом выходе с индикатором уровня и регулировкой громкости.
+> [Русский](README-ru.md) | English
 
-## Стек
+A Windows GUI application for browsing Axia/Telos Livewire AoIP networks. The application discovers audio devices (nodes, Element, Fusion, codecs, telephone hybrids), displays IP addresses, models, and lists of Livewire inputs (Sources), and lets you listen to any selected channel on a selected audio output with True Peak, M/S/I LUFS level meters and a phasescope.
 
-- .NET 8, WPF (MVVM, CommunityToolkit.Mvvm)
-- NAudio — захват RTP, вывод через WASAPI
-- YamlDotNet — кэш устройств и настройки
+![](screenshot1.png)
 
-## Структура решения
+### Solution Structure
 
 ```
 src/
-  LivewireBrowser.Core/      обнаружение устройств, модели, кэш, настройки, логирование
-  LivewireBrowser.Audio/     приём RTP, декодирование PCM, воспроизведение через WASAPI
+  LivewireBrowser.Core/      device discovery, models, cache, settings, logging
+  LivewireBrowser.Audio/     RTP reception, PCM decoding, WASAPI playback
   LivewireBrowser.App/       WPF UI (MVVM)
 tests/
   LivewireBrowser.Core.Tests/
 ```
 
-## Сборка и запуск
+### Stack
 
-Требуется .NET 8 SDK.
+- .NET 8, WPF (MVVM, CommunityToolkit.Mvvm)
+- NAudio — RTP capture, WASAPI output
+- YamlDotNet — device cache and settings
+
+### Building and Running
+
+Requires [.NET 8 SDK x64](https://dotnet.microsoft.com/en-us/download/visual-studio-sdks).
 
 ```powershell
+git clone https://github.com/ykmn/LivewireExplorer
+cd .\LivewireExplorer
 dotnet build LivewireBrowser.sln
 dotnet run --project src\LivewireBrowser.App
 dotnet test tests\LivewireBrowser.Core.Tests
 ```
 
-### Публикация в `release/`
+### Publishing to `release/`
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\publish.ps1
 ```
 
-Скрипт собирает self-contained single-file build (`win-x64`, без зависимости от установленного .NET) и кладёт `LivewireBrowser.exe` в папку [release/](release/) в корне проекта, предварительно очищая её.
+The script builds a self-contained single-file executable (`win-x64`, no installed .NET required) and places `LivewireBrowser.exe` in the [release/](release/) folder at the project root, clearing it first.
 
-## Как работает обнаружение устройств
+## How Device Discovery Works
 
-В реальной Livewire-сети не существует открыто документированного UDP-протокола широковещательного обнаружения. Вместо этого приложение использует:
+There is no openly documented UDP broadcast discovery protocol for real Livewire networks. Instead, the application uses:
 
-1. **LWRP (Livewire Routing Protocol) — TCP порт 93.** Это документированный построчный Telnet-подобный протокол управления, который держит каждое устройство Axia/Telos Livewire. Сканер ([LwrpScanner.cs](src/LivewireBrowser.Core/Discovery/LwrpScanner.cs)) перебирает все хосты подсети выбранного сетевого интерфейса, пытается подключиться на TCP/93, и если устройство ответило — посылает команды `VER` (информация об устройстве) и `SRC` (список исходящих каналов с именами и multicast-адресами).
-2. **SAP/SDP-объявления (RFC 2974/4566), порт 9875** — дополнительный, более стандартный механизм для AES67/Livewire+ потоков. Работает только если на нодах явно включена опция "SAP Announcements" (Synchronization menu) — по умолчанию выключена на многих устройствах.
-3. **Livewire Advertisement Protocol, UDP multicast 239.192.255.3:4001** — нативный протокол Axia, подтверждённый официальным мануалом Axia IP-Audio Driver (Rev 2.10): каждое Livewire-устройство и сам IP-Audio Driver периодически анонсируют свои каналы на эту multicast-группу (плюс порт 4000 для запроса немедленного полного анонса). В отличие от TCP/93-обхода подсети, это **пассивное прослушивание без перебора адресов** — заметно быстрее на больших сетях.
+1. **LWRP (Livewire Routing Protocol) — TCP port 93.** This is a documented line-based Telnet-like control protocol supported by every Axia/Telos Livewire device. The scanner ([LwrpScanner.cs](src/LivewireBrowser.Core/Discovery/LwrpScanner.cs)) iterates over all hosts in the selected network interface's subnet, attempts a TCP/93 connection, and if the device responds, sends `VER` (device info) and `SRC` (list of outgoing channels with names and multicast addresses) commands.
+2. **SAP/SDP announcements (RFC 2974/4566), port 9875** — an additional, more standard mechanism for AES67/Livewire+ streams. Only works if SAP Announcements are explicitly enabled on the nodes (Synchronization menu) — disabled by default on many devices.
+3. **Livewire Advertisement Protocol, UDP multicast 239.192.255.3:4001** — a native Axia Livewire protocol confirmed in the official Axia IP-Audio Driver manual (Rev 2.10): every LW device and the IP-Audio Driver itself periodically announce their channels to this multicast group (plus port 4000 for requesting an immediate full announcement). Unlike the TCP/93 subnet sweep, this is **passive listening without address enumeration** — noticeably faster on large networks.
 
-Результаты LWRP, SAP и Advertisement объединяются в [NetworkScanner.cs](src/LivewireBrowser.Core/Discovery/NetworkScanner.cs). Устройства, которые TCP/93-обход почему-то пропустил, но которые видны через Advertisement, тоже попадают в список.
+LWRP, SAP, and Advertisement results are merged in [NetworkScanner.cs](src/LivewireBrowser.Core/Discovery/NetworkScanner.cs). Devices that the TCP/93 sweep missed but are visible via Advertisement are still included in the list.
 
-### Формат Advertisement-пакета (реверс-инжиниринг по реальному перехвату)
+### Advertisement Packet Format (reverse-engineered from real captures)
 
-Бинарный TLV-формат разобран по реальному packet capture (порт 4001), официально не задокументирован. Разбор реализован в [AdvertisementParser.cs](src/LivewireBrowser.Core/Discovery/AdvertisementParser.cs):
+The binary TLV format was reverse-engineered from real packet captures (port 4001) and is not officially documented. Parsing is implemented in [AdvertisementParser.cs](src/LivewireBrowser.Core/Discovery/AdvertisementParser.cs):
 
-- Запись = `тег(4 ASCII-байта) + тип(1 байт) + значение`. Ширина значения зависит от типа: `0x00`→1 байт (счётчик вложенных полей: `NEST`, `INDI`), `0x01`→4 байта (`INIP`=IP устройства; `PSID`/`FSID`/`BSID`=ID источника — `FSID` это буквально multicast-адрес `239.192.x.y`/`239.193.x.y` как 4 сырых байта), `0x03`→строка (2-байтная длина + ASCII, дополнено нулями), `0x06`/`0x08`→2 байта, `0x07`→1 байт.
-- Два вида пакетов: короткий периодический "маячок" (~87 байт, `ADVT=2`, без списка каналов) и полный анонс (`ADVT=1`, сотни-тысячи байт) с именем устройства (`ATRN`) и блоками источников, помеченными динамическими тегами `S001`, `S002`, ... — внутри каждого: `PSID` (номер LW-канала, младшие 2 байта), `FSID` (multicast-адрес), `PSNM` (имя канала — то же название поля, что и в LWRP `SRC`).
-- Подтверждено на реальных данных: `PSID=0x5295` (21141) у канала с `FSID=EF C0 52 95` (239.192.82.149) — `82*256+149=21141`, совпадает с уже использующейся в приложении формулой декодирования LW-номера из multicast-адреса.
+- Record = `tag (4 ASCII bytes) + type (1 byte) + value`. Value width depends on type: `0x00`→1 byte (nested field count: `NEST`, `INDI`), `0x01`→4 bytes (`INIP`=device IP; `PSID`/`FSID`/`BSID`=source ID — `FSID` is literally the multicast address `239.192.x.y`/`239.193.x.y` as 4 raw bytes), `0x03`→string (2-byte length + ASCII, null-padded), `0x06`/`0x08`→2 bytes, `0x07`→1 byte.
+- Two packet types: a short periodic beacon (~87 bytes, `ADVT=2`, no channel list) and a full announcement (`ADVT=1`, hundreds to thousands of bytes) with the device name (`ATRN`) and source blocks tagged with dynamic labels `S001`, `S002`, ... — each containing: `PSID` (LW channel number, lower 2 bytes), `FSID` (multicast address), `PSNM` (channel name — same field name as in LWRP `SRC`).
+- Confirmed on real data: `PSID=0x5295` (21141) for a channel with `FSID=EF C0 52 95` (239.192.82.149) — `82*256+149=21141`, matching the LW number decoding formula already used by the application.
 
-Подтверждённые на реальной сети поля ответа `VER`: `LWRP` (версия протокола), `DEVN` (имя/тип устройства — у простых нод служебное `lwwd`/`LiveAES`/`LiveIO`, у Engine/Fusion/Z/IP ONE/Sound4Streamer/Nx12 — буквально тип продукта), `NSRC`/`NDST`/`NGPI`/`NGPO` (число источников/приёмников/GPI/GPO), у xNode дополнительно `PRODUCT`+`MODEL` (например `"Axia xNode"` + `"Analog 4x4 I/O"`). Ответ `SRC` оформлен блоком `BEGIN ... SRC <num> PSNM:"..." RTPA:"a.b.c.d" ... END`, имя устройства/модель в приложении строятся из этих полей по приоритету: `PRODUCT+MODEL` → `DEVN` → `"LWRP device"`.
+Confirmed `VER` response fields on real networks:
+- `LWRP` (protocol version),
+- `DEVN` (device name/type:
+  - simple nodes return service strings like `lwwd`/`LiveAES`/`LiveIO`,
+  - Engine/Fusion/ZIP ONE/Sound4Streamer/Nx12 return the literal product type),
+- `NSRC`/`NDST`/`NGPI`/`NGPO` (source/destination/GPI/GPO counts),
+- xNodes additionally have `PRODUCT`+`MODEL` (e.g. `"Axia xNode"` + `"Analog 4x4 I/O"`).
+- The `SRC` response is formatted as a `BEGIN ... SRC <num> PSNM:"..." RTPA:"a.b.c.d" ... END` block; the device name/model is constructed from these fields by priority: `PRODUCT+MODEL` → `DEVN` → `"LWRP device"`.
 
-Найдена и прочитана официальная спецификация **Livewire Routing Protocol v2.0.2** (Telos Systems Corp.) — она подтверждает, что команда `IP` (без параметров) возвращает текущую сетевую конфигурацию устройства, включая `hostname:<имя>` (DNS-совместимое, максимум 12 символов) — это имя, заданное на самом устройстве, а не угадываемое снаружи. Приоритет имени устройства в приложении: **1)** `hostname` из ответа на `IP` → **2)** для категории "IP-драйверы" — реальное имя компьютера через **NetBIOS Name Service** (см. ниже) → **3)** обратный DNS (PTR-запрос) → **4)** `PRODUCT+MODEL`/`DEVN` из `VER`.
+The official **Livewire Routing Protocol v2.0.2** specification (Telos Systems Corp.) confirms that the `IP` command (without parameters) returns the device's current network configuration including `hostname:<name>` (DNS-compatible, max 12 characters) — the name configured on the device itself, not guessed externally. Device name priority in the application:
+1. `hostname` from the `IP` response →
+2. for the "IP Drivers" category — the actual computer name via **NetBIOS Name Service** (see below) →
+3. reverse DNS (PTR lookup) →
+4. `PRODUCT+MODEL`/`DEVN` from `VER`.
 
-### Имя компьютера для IP-Audio Driver
+### Computer Name for IP-Audio Driver
 
-Драйвер Axia IP-Audio Driver — это ПО на Windows-машине, а не отдельное железное устройство, и часто не имеет PTR-записи в DNS сети. Для категории "IP-драйверы" приложение дополнительно опрашивает хост через **NetBIOS Name Service** (UDP/137, "Node Status" запрос — тот же механизм, что у `nbtstat -A <ip>`) и получает настоящее имя компьютера Windows напрямую с машины, независимо от настроек DNS ([NetBiosNameResolver.cs](src/LivewireBrowser.Core/Network/NetBiosNameResolver.cs)).
+The Axia IP-Audio Driver is software running on a Windows machine, not a standalone hardware device, and often has no PTR record in the network's DNS. For the "IP Drivers" category, the application additionally queries the host via **NetBIOS Name Service** (UDP/137, "Node Status" request — the same mechanism as `nbtstat -A <ip>`) and retrieves the actual Windows computer name directly from the machine, independently of DNS configuration ([NetBiosNameResolver.cs](src/LivewireBrowser.Core/Network/NetBiosNameResolver.cs)).
 
-Подтверждено на реальном устройстве: ответ на `IP`-запрос приходит **двумя отдельными строками** и в **разных форматах** — `IP ADDR:"172.22.0.36" LINK:1` (двоеточие, как в `VER`/`SRC`) и отдельно `IP hostname air-dsp2` (без двоеточия вообще, просто слово-значение через пробел). `ExtractIpHostname` разбирает оба варианта.
+Confirmed on a real devices: the `IP` command response arrives as **two separate lines** in **different formats** — `IP ADDR:"172.22.0.36" LINK:1` (colon-separated, like `VER`/`SRC`) and separately `IP hostname air-pc2` (no colon at all, just a space-separated word-value pair). `ExtractIpHostname` handles both variants.
 
-**IP-Audio Driver (программный драйвер на ПК).** `DEVN:"lwwd"` не описан в официальной спецификации, но на реальных сетях стабильно встречается с числом источников/приёмников/GPI/GPO, точно совпадающим с заявленными характеристиками продукта Axia IP-Audio Driver (1/4/8/24-канальные версии) — это эвристика по косвенным признакам, не гарантия протокола. Такие устройства попадают в отдельную категорию "IP-драйверы" с моделью "Axia IP-Audio Driver"; имя компьютера, на котором драйвер установлен, в типичном случае получается через тот же `hostname` из `IP`-запроса (драйвер обычно сообщает имя ПК как сетевое имя устройства) или через обратный DNS.
+**IP-Audio Driver (software driver on a PC).** `DEVN:"lwwd"` is not described in the official specification, but is consistently found on real networks with source/destination/GPI/GPO counts exactly matching the documented specifications of the Axia IP-Audio Driver product (1/4/8/24-channel versions) — this is a heuristic based on indirect evidence, not a protocol guarantee. Such devices are placed in a separate "IP Drivers" category with the model "Axia IP-Audio Driver"; the host computer name is typically obtained via the same `hostname` field from the `IP` command (the driver usually reports the PC name as the device network name) or via reverse DNS.
 
-⚠️ **Оговорка.** Точная семантика остальных, ещё не встретившихся атрибутов LWRP не задокументирована официально Telos Alliance — то, что выше, проверено по логам реальной сети и по найденной официальной спецификации, но не исключены отличия у других поколений прошивок. Если что-то определяется неверно — смотрите лог-файл (там пишутся сырые строки ответа `VER`/`SRC`/`IP` на уровне Debug) и присылайте его для донастройки парсинга в [LwrpScanner.cs](src/LivewireBrowser.Core/Discovery/LwrpScanner.cs).
+> [!IMPORTANT]
+> **Disclaimer.** The exact semantics of other LWRP attributes not yet encountered are not officially documented by Telos Alliance — the above was verified from real network logs and the official specification, but differences may exist in other firmware generations or devices. If something is classified incorrectly, check the log file (it records raw `VER`/`SRC`/`IP` response strings at Debug level) and adjust the parser settings in [LwrpScanner.cs](src/LivewireBrowser.Core/Discovery/LwrpScanner.cs).
 
-Если ни `hostname` из `IP`, ни обратный DNS не разрешились (например, на сети без настроенных hostname для каждого устройства), приложение подставляет IP-адрес в скобках после общего самоописания устройства (например `LiveIO (172.22.0.27)`) — иначе несколько однотипных нод выглядели бы в списке одинаково и неразличимо.
+If neither the `hostname` from `IP` nor reverse DNS resolves (e.g. on a network without configured hostnames per device), the application appends the IP address in parentheses after the device's general self-description (e.g. `LiveIO (172.22.0.27)`) — otherwise multiple identical nodes would appear indistinguishable in the list.
 
-В UI устройство показывает раздельно **"Класс устройства"** (категория из списка ниже), **"Название"** (приоритет: настроенный hostname → обратный DNS → IP-суффикс) и **"Модель устройства"** (например, для цифровой ноды — `AES/EBU 8x8 I/O`, для телефонного гибрида — `Nx12`).
+In the UI, each device displays separately: **"Device Class"** (category from the list below — nodes, codecs, Engine, etc.), **"Name"** (priority: configured hostname → reverse DNS → IP suffix), and **"Device Model"** (e.g. for a digital node — `AES/EBU 8x8 I/O`, for a telephone hybrid — `Nx12`).
 
-### Номер LW-канала
+> [!NOTE]+
+> The Livewire driver for Linux is not currently considered.
 
-Livewire кодирует свой 16-битный номер канала прямо в multicast-адресе: `239.192.<hi>.<lo>` ⇔ канал `hi*256+lo`. Приложение вычисляет его автоматически (`LwrpScanner.ComputeLwNumber`) и показывает рядом с порядковым номером источника на устройстве (`ChannelNumber`) и именем канала.
+> [!TIP]+
+> The `/` key can hide the last digits of IP addresses in the list.
+> In device class sort mode, the `+` key expands all categories and discovered devices, and the `-` key collapses them.
 
-## Прослушивание канала
+## Stopping Scan and Rescan
 
-При клике на номер канала приложение подключается к multicast-группе канала и принимает RTP напрямую (`RtpReceiver` в [LivewireBrowser.Audio](src/LivewireBrowser.Audio)), декодирует линейный PCM (24 бит, big-endian, 48 кГц — подтверждено по реальному захвату пакетов) и выводит через WASAPI (`AudioPlaybackEngine`) на выбранное в нижней панели звуковое устройство, с индикатором уровня (`LevelMeter`) и слайдером громкости.
+![](screenshot2.png)
 
-`RtpReceiver` разбирает RTP-заголовок по RFC 3550 не как фиксированные 12 байт, а с учётом переменной длины: список CSRC-идентификаторов и опциональный extension-заголовок могут сдвигать начало полезной нагрузки, а бит padding — добавлять паддинг-байты в конце пакета (`RtpReceiver.TryGetPayloadRange`). Без этого хвост заголовка/паддинг попадал в декодер как аудиосэмплы и был слышен как белый шум.
+The "Scan" button changes to "Stop" during a full scan, and likewise the "Rescan" button on a specific device — pressing again cancels the corresponding operation (`CancellationToken` threaded through the entire chain `NetworkScanner.FullScanAsync`/`RescanDeviceAsync` → `LwrpScanner` → `SapListener`).
 
-### Измерители громкости
+The status bar throughout the scan shows exactly what is happening (current polled IP and request stage — TCP/93, VER, SRC, IP) as well as scan start/stop/completion messages.
 
-Справа в главном окне — четыре вертикальных индикатора: **True Peak**, **Momentary**, **Short Term** и **Integrated Loudness**, каждый с текущим значением и кликабельным максимумом (клик сбрасывает только этот максимум). Реализованы в [LoudnessMeter.cs](src/LivewireBrowser.Audio/LoudnessMeter.cs): K-weighting (ITU-R BS.1770-4, предусилительный + RLB-фильтр) по гейтинг-блокам 100 мс, Momentary/Short Term — скользящее среднее за 400 мс/3000 мс, Integrated — честный двухпроходный гейтинг по EBU R128 (абсолютный гейт -70 LUFS, относительный — "среднее минус 10 LU"). True Peak — приближение через 4-кратную линейно интерполированную передискретизацию, а не полная полифазная реконструкция по Приложению 2 ITU-R BS.1770 — не сертифицированное измерение, но ловит большинство межсэмпловых пиков, которые обычный peak-метр по сэмплам пропускает.
+> [!WARNING]
+> - LWRP subnet scanning is limited to 4096 hosts (see `NetworkInterfaceHelper.GetHostAddresses`) — for very large subnets (e.g. /16) only part of the address space will be scanned; using an interface with a /24 or smaller subnet is recommended.
+> - LWRP protocol fields were reconstructed unofficially by parsing device responses (see disclaimer above) — the correctness of name/model/channel parsing will depend on the specific device firmware.
 
-## Кэш, настройки и логи
+## Listening to a Channel
 
-Все рабочие файлы лежат **рядом с exe**, а не в `%LOCALAPPDATA%` или Program Files — это позволяет приложению работать как портативное и не зависеть от прав на запись в системные папки:
+Clicking a channel number connects the application to the channel's multicast group and receives RTP directly (`RtpReceiver` in [LivewireBrowser.Audio](src/LivewireBrowser.Audio)), decodes linear PCM (24-bit, big-endian, 48 kHz — confirmed from real packet captures), and outputs through WASAPI (`AudioPlaybackEngine`) to the audio device selected in the bottom panel, with a level meter (`LevelMeter`) and volume slider.
 
-- `data/devices.yaml` — кэш последнего найденного списка устройств и каналов (загружается при старте, обновляется после каждого скана). Сохраняются все поля: класс, модель и название устройства, IP, для каждого канала — порядковый номер, номер LW, имя, multicast-адрес/порт, признак активности (`IsActive`).
-- `data/settings.yaml` — настройки: выбранный сетевой интерфейс Livewire, период автоматического полного пересканирования, последняя громкость, размер главного окна (сохраняется при закрытии, восстанавливается при следующем запуске).
-- `logs/app-YYYYMMDD.log` — отладочный лог (новый файл на каждый день). Пишутся: отправленные/полученные пакеты, результаты разбора, ошибки сети и аудио, необработанные исключения UI. Открыть папку можно прямо из приложения: **Настройки → "Открыть папку логов"**. Глубина логирования настраивается (`AppSettings.LogLevel`, по умолчанию `Warn` для новых профилей) — переключить на `Debug` стоит перед диагностикой проблемы, иначе подробности (например, разбор пакетов) в лог не попадут.
+`RtpReceiver` parses the RTP header per RFC 3550 not as a fixed 12 bytes, but accounting for variable length: the CSRC identifier list and optional extension header can shift the payload start, and the padding bit can add padding bytes at the end of the packet (`RtpReceiver.TryGetPayloadRange`). Without this, header tail/padding bytes were fed into the decoder as audio samples and audible as white noise.
 
-## Настройки приложения
+### LW Channel Number
 
-Открываются кнопкой **"Настройки"** в главном окне:
+Livewire encodes its 16-bit channel number in the multicast address: `239.192.<hi>.<lo>` ⇔ channel `hi*256+lo`. The application computes this automatically (`LwrpScanner.ComputeLwNumber`) and displays it alongside the source's index on the device (`ChannelNumber`) and the channel name.
 
-- **Сетевой интерфейс Livewire** — обязательно выбрать перед сканированием; без этого трафик уходит через интерфейс по умолчанию и обычно не достигает Livewire-сети на многосетевых машинах. Список и кнопка "Обновить" берут данные из `NetworkInterfaceHelper`.
-- **Способ поиска устройств** (`DiscoveryMode`): "Поиск перебором" — только TCP/93-обход всех хостов подсети (`LwrpScanner.ScanSubnetAsync`); "Поиск перебором и по анонсам" — то же плюс пассивное прослушивание SAP/Advertisement multicast (по умолчанию, прежнее поведение); "Поиск по анонсам" — только пассивное прослушивание, без обхода подсети (быстрее, но не увидит устройства, которые не анонсируют себя).
-- **Период автоматического полного пересканирования** (в минутах, 0 — выключено).
-- **Язык** (`English`/`Russian`, по умолчанию `English`) — переключается без перезапуска приложения.
-- **Глубина логирования** (`Debug`/`Info`/`Warn`/`Error`, по умолчанию `Warn`).
-- **Сброс кэша устройств.**
-- **Открыть папку логов.**
+### Loudness Meters
 
-Размер и позиция главного окна сохраняются отдельно от диалога настроек — автоматически при закрытии приложения, восстанавливаются при следующем запуске (с проверкой, что сохранённая позиция всё ещё попадает на видимый экран).
+On the right side of the main window are four vertical meters: **True Peak**, **Momentary**, **Short Term**, and **Integrated Loudness**, each with a current value and a clickable maximum (clicking resets only that maximum). Implemented in [LoudnessMeter.cs](src/LivewireBrowser.Audio/LoudnessMeter.cs):
+- K-weighting (ITU-R BS.1770-4, pre-filter + RLB filter) over 100 ms gating blocks,
+- Momentary/Short Term — sliding average over 400 ms/3000 ms,
+- Integrated — proper two-pass gating per EBU R128 (absolute gate -70 LUFS, relative gate — "mean minus 10 LU"),
+- True Peak — approximated via 4× linear interpolation upsampling, not full polyphase reconstruction per ITU-R BS.1770 Annex 2 — not a certified measurement, but catches most inter-sample peaks that a standard sample-domain peak meter misses.
 
-## Локализация
+The phasescope has an input gain knob x1...x12 — for display purposes only.
 
-Интерфейс полностью на английском или русском (см. настройку "Язык" выше). Все строки — в [Strings.en.xaml](src/LivewireBrowser.App/Localization/Strings.en.xaml) / [Strings.ru.xaml](src/LivewireBrowser.App/Localization/Strings.ru.xaml); статические XAML-метки читают их через `{DynamicResource}` (обновляются на лету при смене языка), код вьюмоделей — через `Loc.Get(key)` (тот же смёрженный словарь, единый источник правды). Переключение происходит мгновенно, без перезапуска окон.
+## Cache, Settings, and Logs
 
-## О программе
+All working files are stored **next to the `.exe`**, not in `%LOCALAPPDATA%` or Program Files — this lets the application run as portable and avoids requiring write access to system folders:
 
-Кнопка **"About"/"О программе"** в правом углу верхнего ряда открывает информационное окно с версией, кратким описанием и копирайтом.
+- `data/devices.yaml` — cache of the last discovered device and channel list (loaded at startup, updated after each scan). All fields are saved: device class, model, name, IP, and for each channel — index, LW number, name, multicast address/port, and active flag (`IsActive`).
+- `data/settings.yaml` — settings: selected Livewire network interface, automatic full rescan interval, last volume, main window size (saved on close, restored on next launch).
+- `logs/app-YYYYMMDD.log` — debug log (new file each day). Records: sent/received packets, parse results, network and audio errors, unhandled UI exceptions. The log folder can be opened directly from the app: **Settings → "Open Log Folder"**. Log level is configurable (`AppSettings.LogLevel`, default `Warn` for new profiles) — switch to `Debug` before diagnosing an issue, otherwise details such as packet parsing will not be written.
 
-## Группировка устройств
+You can edit these files manually following YAML syntax, or delete them — they will be recreated automatically.
 
-Найденные устройства группируются по категориям ([DeviceClassifier.cs](src/LivewireBrowser.Core/Discovery/DeviceClassifier.cs)): аналоговые ноды, цифровые ноды, Engine, Fusion, кодеки, телефонные гибриды, IP-драйверы, прочее. Классификация — по подстрокам в ответе `VER` (модель/тип устройства); список соответствий легко расширяется.
+## Application Settings
 
-## Сортировка и поиск
+Opened via the **"Settings"** button in the main window:
 
-- **Сортировка** (выпадающий список рядом с кнопкой "Скан"): по классу устройства (группы + по названию внутри группы), по IP-адресу (числовое сравнение октетов через [IpAddressUtil.cs](src/LivewireBrowser.Core/Network/IpAddressUtil.cs), а не строковое — `172.22.0.9` идёт раньше `172.22.0.10`), по названию. **По умолчанию — по IP-адресу.** Применяется сразу и пересчитывается после каждого скана/пересканирования.
-- **Поиск** (поле "Поиск:" под панелью сортировки) — живой поиск по подстроке среди класса, названия, модели и IP-адреса любого устройства (`DeviceViewModel.MatchesSearch`). Кнопки ◀/▶ переходят между найденными совпадениями по кругу, текущее совпадение подсвечивается жёлтым и автоматически прокручивается в видимую область списка.
+![](screenshot3.png)
 
-## Остановка скана и пересканирования
+- **Livewire Network Interface** — must be selected before scanning; without this, traffic goes through the default interface and typically does not reach the Livewire network on multi-homed machines. The list and "Refresh" button use `NetworkInterfaceHelper`.
+- **Discovery Mode** (`DiscoveryMode`): "Sweep" — TCP/93 sweep of all subnet hosts only (`LwrpScanner.ScanSubnetAsync`); "Sweep + Announcements" — same plus passive SAP/Advertisement multicast listening (default, previous behavior); "Announcements Only" — passive listening only, no subnet sweep (faster, but will miss devices that do not announce themselves).
+- **Automatic full rescan interval** (in minutes, 0 — disabled).
+- **Language** (`English`/`Russian`, default `English`) — switches without restarting the application.
+- **Log level** (`Debug`/`Info`/`Warn`/`Error`, default `Warn`).
+- **Clear device cache.**
+- **Open log folder.**
 
-Кнопка "Скан" во время выполнения полного скана меняется на "Остановить", и точно так же кнопка "Пересканировать" у конкретного устройства — повторное нажатие отменяет соответствующую операцию (`CancellationToken`, передаётся через всю цепочку `NetworkScanner.FullScanAsync`/`RescanDeviceAsync` → `LwrpScanner` → `SapListener`). Отмена обрабатывается корректно — без зависших задач или необработанных исключений.
+Main window size and position are saved separately from the settings dialog — automatically on application close, restored on next launch with a check that the saved position is still on a visible screen.
 
-⚠️ **Важная деталь реализации.** `[RelayCommand]` (CommunityToolkit.Mvvm) по умолчанию генерирует команду с защитой от повторного входа: пока выполняется `Task` команды, `CanExecute` возвращает `false`, и WPF реально дизейблит кнопку — это и была причина, по которой "Остановить" выглядела (и фактически была) неактивной. Кнопки переключения скана/пересканирования используют `[RelayCommand(AllowConcurrentExecutions = true)]`, чтобы команду можно было вызвать повторно во время выполнения (второй вызов распознаёт, что операция уже идёт, и отменяет её вместо повторного запуска). Дополнительно кнопка в состоянии "Остановить" получает явный стиль (красный фон, белый жирный текст) — стандартное оформление Windows-кнопки слишком похоже на disabled-вид.
+## Localization
 
-Статус-бар в течение всего скана показывает, что именно сейчас происходит (текущий опрашиваемый IP и стадия запроса — TCP/93, VER, SRC, IP), а также сообщения о старте/остановке/завершении скана.
+The interface is fully available in English or Russian (see the Language setting above). All strings are in [Strings.en.xaml](src/LivewireBrowser.App/Localization/Strings.en.xaml) / [Strings.ru.xaml](src/LivewireBrowser.App/Localization/Strings.ru.xaml); static XAML labels read them via `{DynamicResource}` (updated live on language change), ViewModel code uses `Loc.Get(key)`. Switching is instant, no window restart needed.
 
-## Известные ограничения
+## Sorting and Search
 
-- LWRP-сканирование подсети ограничено 4096 хостами (см. `NetworkInterfaceHelper.GetHostAddresses`) — для очень крупных подсетей (например /16) будет просканирована только часть адресов; рекомендуется использовать интерфейс с подсетью /24 или уже.
-- Поля LWRP-протокола восстановлены неофициально (см. оговорку выше) — корректность парсинга имён/моделей/каналов зависит от конкретной прошивки устройств.
+- **Sorting** (dropdown next to the "Scan" button): by device class (groups + by name within group), by IP address (numeric octet comparison via [IpAddressUtil.cs](src/LivewireBrowser.Core/Network/IpAddressUtil.cs), not lexicographic — `172.22.0.9` comes before `172.22.0.10`), by name. **Default: by IP address.** Applied immediately and recalculated after each scan/rescan.
+
+  When sorting by device class, discovered devices are grouped by category ([DeviceClassifier.cs](src/LivewireBrowser.Core/Discovery/DeviceClassifier.cs)): analog nodes, digital nodes, Engine, Fusion, codecs, telephone hybrids, IP drivers, and other. Classification is based on substrings in the `VER` response (device model/type); the matching list is easy to extend.
+
+- **Search** (the "Search:" field below the sort panel) — live substring search across the class, name, model, and IP address of any device (`DeviceViewModel.MatchesSearch`). The ◀/▶ buttons cycle through matches; the current match is highlighted in yellow and automatically scrolled into view.
+
+## License
+
+The application is distributed under the GPL v3 license. As the author, I open-source the code and permit:
+
+- using the application for personal, educational, and commercial purposes;
+- modifying the application.
+
+License restrictions:
+
+- redistribution of the original application requires a link to this repository;
+- modifications must be published as open source — the project cannot be made closed-source;
+- any derivative works also become GPL v3.
+
+## Donate
+
+RU: [https://yoomoney.ru/to/4100135835863](https://yoomoney.ru/to/4100135835863)
+International: `0x0EDe142a3D9f1D556562e112A9bC34c220158C9A` *(ETH, BNB, Poly, Arbitrum, Base)*
