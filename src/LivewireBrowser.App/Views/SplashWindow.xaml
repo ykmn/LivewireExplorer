@@ -1,0 +1,52 @@
+<Window x:Class="LivewireBrowser.App.Views.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Livewire Browser" Width="480" Height="320"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        ShowInTaskbar="False" Topmost="True">
+    <Border CornerRadius="12" BorderThickness="1" BorderBrush="#3027E9DE">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#021E2F" Offset="0" />
+                <GradientStop Color="#2547A8" Offset="0.5" />
+                <GradientStop Color="#03A4EC" Offset="0.8" />
+                <GradientStop Color="#27E9DE" Offset="1" />
+            </LinearGradientBrush>
+        </Border.Background>
+        <Grid Margin="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Button x:Name="CloseButton" Grid.Row="0" Content="✕" Width="32" Height="32"
+                    HorizontalAlignment="Right" Margin="0,8,8,0"
+                    Background="Transparent" BorderThickness="0" Foreground="White"
+                    FontSize="14" Cursor="Hand" Click="OnCloseClick" />
+
+            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Image Source="/splash_icon.png" Width="96" Height="96" Margin="0,0,0,12" />
+                <TextBlock Text="Livewire Browser" FontSize="28" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center">
+                    <TextBlock.Effect>
+                        <DropShadowEffect Color="Black" Opacity="0.6" BlurRadius="6" ShadowDepth="1" />
+                    </TextBlock.Effect>
+                </TextBlock>
+                <TextBlock x:Name="VersionText" FontSize="13" Foreground="White" Opacity="0.9"
+                           HorizontalAlignment="Center" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="2" Margin="20,0,20,16">
+                <TextBlock x:Name="StatusText" FontSize="11" Foreground="White" Opacity="0.85"
+                           HorizontalAlignment="Center" Margin="0,0,0,6" />
+                <ProgressBar x:Name="ProgressBarControl" Height="6" Minimum="0" Maximum="1" Value="0" />
+                <TextBlock Text="© 2026 Roman Ermakov &lt;livcey@gmail.com&gt;" FontSize="10"
+                           Foreground="White" Opacity="0.75" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                <TextBlock Text="License: GNU GPL v3 License (freeware)" FontSize="10"
+                           Foreground="White" Opacity="0.75" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

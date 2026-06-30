@@ -1,0 +1,542 @@
+<Window x:Class="LivewireBrowser.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:LivewireBrowser.App.ViewModels"
+        xmlns:local="clr-namespace:LivewireBrowser.App"
+        Title="Livewire Browser" Height="700" Width="1000" Icon="icon.ico"
+        Background="{StaticResource WindowBgBrush}">
+    <Window.Resources>
+        <!-- Grouping is toggled in code-behind (OnSelectedSortOptionChanged): GroupDescriptions
+             are only populated when the user picked "По классу" sorting. -->
+        <CollectionViewSource x:Key="GroupedDevices" Source="{Binding Devices}" />
+
+        <!-- Start/Stop toggle buttons (Scan/Stop, Rescan/Stop) use this so the active "Stop"
+             state is unmistakably an active, clickable control — the default Windows button
+             chrome looks pale/gray enough that users read it as disabled. Triggers off
+             Tag (bound to IsScanning/IsRescanning) rather than the Content text — the text is
+             localized, so comparing against a literal word would only match one language. -->
+        <Style x:Key="ToggleScanButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource StopRedBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="FontWeight" Value="Bold" />
+                    <Setter Property="BorderBrush" Value="{StaticResource StopRedBorderBrush}" />
+                    <Setter Property="Cursor" Value="Hand" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Click resets the running max it's labeled under — styled as plain clickable
+             text rather than a button, since it sits under a numeric readout, not a toolbar. -->
+        <Style x:Key="ResetMaxLinkStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource AccentLinkBrush}" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="ToolTip" Value="{DynamicResource Str_ResetMaxTooltip}" />
+        </Style>
+
+        <!-- Class-group headers collapse/expand on click, same as a device card's header
+             (see OnDeviceHeaderClick / DeviceViewModel.IsExpanded) — built on Expander since
+             it already wires "click the header toggles the content" for free, but with its
+             default chevron/border/padding stripped out so the header still reads as plain
+             bold text like the rest of the list, not a distinct control. Defaults to expanded
+             so existing behavior (all groups visible) doesn't change until the user collapses
+             one explicitly. -->
+        <Style x:Key="CategoryGroupExpanderStyle" TargetType="Expander">
+            <Setter Property="IsExpanded" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton x:Name="HeaderSite" Cursor="Hand"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <ContentPresenter Content="{TemplateBinding Content}" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=Expander}, Path=Header}"
+                                           FontWeight="Bold" FontSize="16" Margin="0,8,0,4" />
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Width only — Height is bound per-instance to the search TextBox's own ActualHeight
+             (see MainWindow.xaml below) instead of a hardcoded pixel value: a fixed Height=30
+             clipped the TextBox's text vertically at some font/DPI scalings (its Padding=6,5
+             from the TextBox style leaves only ~20px for content, not enough headroom). Letting
+             the TextBox auto-size from its own Padding+font and syncing the buttons to that
+             actual height fits correctly under any text/DPI scale. -->
+        <Style x:Key="SearchNavButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="220" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="8" Grid.Row="0">
+            <!-- Grid (not a StackPanel) so the empty space between the scan date and the
+                 Sort/Settings/About group is a real flexible "*" column rather than fixed
+                 margins — Scan stays pinned left, About (and friends) stay pinned right,
+                 regardless of window width. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Content="{Binding ScanButtonText}" Tag="{Binding IsScanning}" Width="100" Padding="4"
+                        Command="{Binding ScanCommand}" Style="{StaticResource ToggleScanButtonStyle}" />
+                <!-- MinWidth reserves space for the full date/time string up front — without
+                     it, the rest of the row shifts the moment LastScanTime first gets a value
+                     (the label-only text before any scan is much shorter than label+date). -->
+                <TextBlock Grid.Column="1" MinWidth="210" Margin="16,0,0,0" VerticalAlignment="Center">
+                    <Run Text="{DynamicResource Str_LastScanLabel}" />
+                    <Run Text="{Binding LastScanTime, StringFormat=' {0:dd.MM.yyyy HH:mm:ss}'}" />
+                </TextBlock>
+
+                <TextBlock Grid.Column="3" Text="{DynamicResource Str_Sort}" VerticalAlignment="Center" />
+                <!-- No fixed Width: the ComboBox's own template sizes to its content (the
+                     selected item's text) when Width isn't set, so Padding's right side
+                     controls exactly how much wider than the text the field is — 44px right
+                     + the existing 6px left padding = 50px total beyond the text itself. -->
+                <ComboBox Grid.Column="4" Padding="6,4,44,4" Margin="6,0,0,0" ItemsSource="{Binding SortOptions}"
+                          DisplayMemberPath="Label" SelectedItem="{Binding SelectedSortOption}" />
+
+                <Button Grid.Column="5" Content="{DynamicResource Str_Settings}" Width="100" Margin="16,0,0,0" Padding="4" Click="OnSettingsClick" />
+
+                <Button Grid.Column="6" Padding="4" Margin="8,0,0,0" Click="OnAboutClick" ToolTip="{DynamicResource Str_About}">
+                    <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="15" />
+                </Button>
+            </Grid>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="{DynamicResource Str_Search}" VerticalAlignment="Center" />
+                <TextBox x:Name="SearchTextBox" Width="240" MinHeight="28" Padding="6,4" Margin="6,0,0,0"
+                         VerticalContentAlignment="Center" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Content="&#xE711;" Margin="6,0,0,0" Command="{Binding ClearSearchCommand}"
+                        ToolTip="{DynamicResource Str_ClearSearchTooltip}"
+                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}" />
+                <Button Content="&#xE76B;" Margin="4,0,0,0" Command="{Binding PreviousMatchCommand}"
+                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}" />
+                <Button Content="&#xE76C;" Margin="4,0,0,0" Command="{Binding NextMatchCommand}"
+                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}" />
+                <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding SearchStatusText}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- VirtualizingPanel.IsVirtualizing="False": the "+"/"-" expand/collapse-all shortcuts
+             (MainWindow.xaml.cs) walk the visual tree to find every GroupItem's Expander —
+             with virtualization on, group containers scrolled out of view can be recycled/
+             destroyed, making that traversal miss groups. Device counts here (tens, not
+             thousands) make the lost virtualization cheap. -->
+        <ListBox x:Name="DevicesListBox" Grid.Row="1" Margin="8" ItemsSource="{Binding Source={StaticResource GroupedDevices}}"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="False">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.ContainerStyle>
+                        <Style TargetType="GroupItem">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="GroupItem">
+                                        <Expander Header="{Binding Name}" Style="{StaticResource CategoryGroupExpanderStyle}">
+                                            <ItemsPresenter />
+                                        </Expander>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </GroupStyle.ContainerStyle>
+                </GroupStyle>
+            </ListBox.GroupStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:DeviceViewModel}">
+                    <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0.5"
+                            CornerRadius="{StaticResource DefaultCornerRadius}" Margin="0,2" HorizontalAlignment="Stretch">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource CardBgBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource HighlightBgBrush}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource HighlightBorderBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <Grid Margin="6" Cursor="Hand" Background="Transparent"
+                                  MouseLeftButtonUp="OnDeviceHeaderClick">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding IpDisplay}" FontSize="18" FontWeight="Bold" />
+                                        <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding CategoryDisplay}" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" />
+                                        <TextBlock Text=" · " FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" />
+                                        <TextBlock Text="{Binding Model}" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="{Binding RescanButtonText}" Tag="{Binding IsRescanning}" Padding="4,0"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding RescanCommand}" Style="{StaticResource ToggleScanButtonStyle}" />
+                            </Grid>
+                            <ListView ItemsSource="{Binding Channels}" BorderThickness="0" Background="Transparent"
+                                      Margin="6,0,6,6"
+                                      Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
+                                <!-- Overriding SystemColors.HighlightBrushKey/HighlightTextBrushKey
+                                     (tried first) turned out not to be enough — this theme's
+                                     ListViewItem chrome for a GridView row doesn't actually
+                                     read selection colors from those keys, so the default pale
+                                     Windows highlight with light theme text on top stayed
+                                     unreadable. Full ControlTemplate override instead: explicit
+                                     Border + GridViewRowPresenter, selected/hover background
+                                     driven by triggers on our own brushes (HighlightBgBrush/
+                                     ControlBgHoverBrush from DarkTheme.xaml) so the result no
+                                     longer depends on what the active theme happens to wire up
+                                     internally. -->
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        <Setter Property="Padding" Value="4,2" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                                        <GridViewRowPresenter Content="{TemplateBinding Content}"
+                                                                               Columns="{TemplateBinding GridView.ColumnCollection}" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlBgHoverBrush}" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource HighlightBgBrush}" />
+                                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="{DynamicResource Str_ChannelNumberHeader}" Width="40" DisplayMemberBinding="{Binding ChannelNumber}" />
+                                        <GridViewColumn Header="{DynamicResource Str_LwHeader}" Width="70" DisplayMemberBinding="{Binding LwDisplay}" />
+                                        <GridViewColumn Header="{DynamicResource Str_ChannelNameHeader}" Width="240">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ChannelViewModel}">
+                                                    <TextBlock Text="{Binding NameDisplay}"
+                                                               ToolTip="{Binding MulticastAddress}"
+                                                               MouseLeftButtonUp="OnChannelNameClick" Tag="{Binding}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource AccentLinkBrush}" />
+                                                                <Setter Property="TextDecorations" Value="Underline" />
+                                                                <Setter Property="Cursor" Value="Hand" />
+                                                                <Setter Property="IsHitTestVisible" Value="True" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                        <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+                                                                        <Setter Property="TextDecorations" Value="{x:Null}" />
+                                                                        <Setter Property="Cursor" Value="Arrow" />
+                                                                        <Setter Property="IsHitTestVisible" Value="False" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Border Grid.Row="2" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0.5,0,0" Padding="8"
+                DataContext="{Binding Player}">
+            <!-- Grid (not a StackPanel): Stop+Channel pinned left, Output+Volume pinned right,
+                 with a real flexible "*" gap between them — same reasoning as the top row. The
+                 standalone "Level" meter was dropped: the TP/M/S/I loudness meters on the right
+                 of the window already cover level monitoring, pre-fader. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Content="{DynamicResource Str_PlayerStop}" Width="60" Command="{Binding StopCommand}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,0">
+                    <TextBlock Text="{DynamicResource Str_Channel}" VerticalAlignment="Center" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center"
+                               Text="{Binding CurrentChannelDisplay}" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="3" Text="{DynamicResource Str_Output}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" Margin="6,0,12,0" VerticalAlignment="Center" Cursor="Hand"
+                           Foreground="{StaticResource AccentLinkBrush}" TextDecorations="Underline"
+                           Text="{Binding SelectedOutputDeviceDisplay}"
+                           MouseLeftButtonUp="OnOutputDeviceClick" />
+                <StackPanel Grid.Column="5" Orientation="Horizontal">
+                    <TextBlock Text="{DynamicResource Str_Volume}" VerticalAlignment="Center" />
+                    <Slider Width="150" Margin="6,0,0,0" Minimum="0" Maximum="1" Value="{Binding Volume}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,4"
+                    Visibility="{Binding IsProgressVisible, Converter={StaticResource BoolToVis}}">
+            <ProgressBar Width="300" Height="16" Minimum="0" Maximum="1"
+                         Value="{Binding ScanProgress}" IsIndeterminate="{Binding IsProgressIndeterminate}" />
+            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ScanProgressText}" />
+        </StackPanel>
+
+        <StatusBar Grid.Row="4" Background="{StaticResource CardBgBrush}" Foreground="{StaticResource TextTertiaryBrush}">
+            <StatusBarItem>
+                <TextBlock>
+                    <Run Text="{DynamicResource Str_DevicesCountLabel}" />
+                    <Run Text="{Binding Devices.Count, Mode=OneWay}" />
+                </TextBlock>
+            </StatusBarItem>
+            <Separator Visibility="{Binding IsProgressVisible, Converter={StaticResource BoolToVis}}" />
+            <StatusBarItem Content="{Binding ElapsedTimeText}" FontWeight="Bold"
+                           Visibility="{Binding IsProgressVisible, Converter={StaticResource BoolToVis}}" />
+            <Separator />
+            <StatusBarItem Content="{Binding StatusText}" />
+        </StatusBar>
+        </Grid>
+
+        <!-- Loudness meters: True Peak / Momentary / Short Term / Integrated, each with a
+             segmented vertical bar, the current reading, and a running max (click to reset).
+             Approximate True Peak and BS.1770/EBU R128-style gated loudness — see
+             LoudnessMeter.cs for the exact simplifications versus a certified meter. Bars sit
+             in a "*" grid row, so they fill (and rescale with) most of the window's height
+             automatically instead of using a fixed pixel height.
+
+             Each bar is 6 stacked rows (red unlit/lit, yellow unlit/lit, green unlit/lit) whose
+             heights come from PlayerViewModel's *Zones records via ProgressFillConverter —
+             only the segment the current reading has actually reached lights up in that zone's
+             color, the rest of the bar (above the reading) stays unlit.
+
+             One shared Grid (not five separate per-column Grids each with their own
+             Auto/*/Auto/Auto rows) — when each column had its own row sizing, the scale's Auto
+             rows and the meters' Auto rows had different content and so resolved to slightly
+             different heights, leaving the scale's bottom edge not quite lined up with the
+             bars'. A single Grid's row heights are computed once across every cell in that row,
+             guaranteeing the "*" bar row (and therefore its top/bottom edges) is pixel-identical
+             in every column. The scale itself (0 down to -inf, 1 LU divisions, same -60dB floor
+             as the bars' normalization) is built in code-behind (MainWindow.xaml.cs,
+             BuildLufsScale) — 60 hand-written XAML tick marks would be unreadable. -->
+        <Border Grid.Column="1" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0.5,0,0,0" Padding="8"
+                DataContext="{Binding Player}">
+            <!-- Outer vertical layout: meters take up a "*" row (whatever vertical space the
+                 fixed-size phasescope block below doesn't need), so resizing the window only
+                 changes the meter bars' height — the phasescope/gain block at the bottom
+                 stays a constant size. -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ContentControl x:Name="LufsScaleHost" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0" MinWidth="26"
+                                Focusable="False" />
+
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="TP" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                <!-- Two thin independent bars (left/right channel) instead of one bar for the
+                     louder-of-the-two channel — each only lights up from its own TruePeakDbLeft/
+                     TruePeakDbRight, so out-of-balance channels are visible at a glance. The
+                     reading/reset below stays a single shared control (the higher of the two
+                     channels) rather than doubling text/buttons under two 6px-wide bars. -->
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Border Width="6" Margin="0,0,2,0" Background="{StaticResource ControlBgBrush}" CornerRadius="3" ClipToBounds="True">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="{Binding TruePeakLeftZones.RedUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakLeftZones.RedLit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakLeftZones.YellowUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakLeftZones.YellowLit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakLeftZones.GreenUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakLeftZones.GreenLit, Converter={StaticResource ProgressFillConverter}}" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="1" Background="{StaticResource MeterZoneRedBrush}" />
+                            <Border Grid.Row="3" Background="{StaticResource MeterZoneYellowBrush}" />
+                            <Border Grid.Row="5" Background="{StaticResource MeterZoneGreenBrush}" />
+                        </Grid>
+                    </Border>
+                    <Border Width="6" Background="{StaticResource ControlBgBrush}" CornerRadius="3" ClipToBounds="True">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="{Binding TruePeakRightZones.RedUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakRightZones.RedLit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakRightZones.YellowUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakRightZones.YellowLit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakRightZones.GreenUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                                <RowDefinition Height="{Binding TruePeakRightZones.GreenLit, Converter={StaticResource ProgressFillConverter}}" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="1" Background="{StaticResource MeterZoneRedBrush}" />
+                            <Border Grid.Row="3" Background="{StaticResource MeterZoneYellowBrush}" />
+                            <Border Grid.Row="5" Background="{StaticResource MeterZoneGreenBrush}" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TruePeakCurrentDisplay}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                <Button Grid.Row="3" Grid.Column="1" Content="{Binding TruePeakMaxDisplay}" FontSize="11" Style="{StaticResource ResetMaxLinkStyle}"
+                        Command="{Binding ResetTruePeakMaxCommand}" />
+
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="M" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                <Border Grid.Row="1" Grid.Column="2" Width="16" HorizontalAlignment="Center"
+                        Background="{StaticResource ControlBgBrush}" CornerRadius="6" ClipToBounds="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="{Binding MomentaryZones.RedUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding MomentaryZones.RedLit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding MomentaryZones.YellowUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding MomentaryZones.YellowLit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding MomentaryZones.GreenUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding MomentaryZones.GreenLit, Converter={StaticResource ProgressFillConverter}}" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="1" Background="{StaticResource MeterZoneRedBrush}" />
+                        <Border Grid.Row="3" Background="{StaticResource MeterZoneYellowBrush}" />
+                        <Border Grid.Row="5" Background="{StaticResource MeterZoneGreenBrush}" />
+                    </Grid>
+                </Border>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding MomentaryCurrentDisplay}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                <Button Grid.Row="3" Grid.Column="2" Content="{Binding MomentaryMaxDisplay}" FontSize="11" Style="{StaticResource ResetMaxLinkStyle}"
+                        Command="{Binding ResetMomentaryMaxCommand}" />
+
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="S" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                <Border Grid.Row="1" Grid.Column="3" Width="16" HorizontalAlignment="Center"
+                        Background="{StaticResource ControlBgBrush}" CornerRadius="6" ClipToBounds="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="{Binding ShortTermZones.RedUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding ShortTermZones.RedLit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding ShortTermZones.YellowUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding ShortTermZones.YellowLit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding ShortTermZones.GreenUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding ShortTermZones.GreenLit, Converter={StaticResource ProgressFillConverter}}" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="1" Background="{StaticResource MeterZoneRedBrush}" />
+                        <Border Grid.Row="3" Background="{StaticResource MeterZoneYellowBrush}" />
+                        <Border Grid.Row="5" Background="{StaticResource MeterZoneGreenBrush}" />
+                    </Grid>
+                </Border>
+                <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding ShortTermCurrentDisplay}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                <Button Grid.Row="3" Grid.Column="3" Content="{Binding ShortTermMaxDisplay}" FontSize="11" Style="{StaticResource ResetMaxLinkStyle}"
+                        Command="{Binding ResetShortTermMaxCommand}" />
+
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="I" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                <Border Grid.Row="1" Grid.Column="4" Width="16" HorizontalAlignment="Center"
+                        Background="{StaticResource ControlBgBrush}" CornerRadius="6" ClipToBounds="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="{Binding IntegratedZones.RedUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding IntegratedZones.RedLit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding IntegratedZones.YellowUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding IntegratedZones.YellowLit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding IntegratedZones.GreenUnlit, Converter={StaticResource ProgressFillConverter}}" />
+                            <RowDefinition Height="{Binding IntegratedZones.GreenLit, Converter={StaticResource ProgressFillConverter}}" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="1" Background="{StaticResource MeterZoneRedBrush}" />
+                        <Border Grid.Row="3" Background="{StaticResource MeterZoneYellowBrush}" />
+                        <Border Grid.Row="5" Background="{StaticResource MeterZoneGreenBrush}" />
+                    </Grid>
+                </Border>
+                <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding IntegratedCurrentDisplay}" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                <Button Grid.Row="3" Grid.Column="4" Content="{Binding IntegratedMaxDisplay}" FontSize="11" Style="{StaticResource ResetMaxLinkStyle}"
+                        Command="{Binding ResetIntegratedMaxCommand}" />
+            </Grid>
+
+            <Border Grid.Row="1" BorderThickness="0,0.5,0,0" BorderBrush="{StaticResource CardBorderBrush}" Margin="0,8,0,8" />
+
+            <!-- Phasescope (goniometer) + gain slider: a fixed-size block pinned to the
+                 bottom of the panel — shrinking the window only shrinks the meters above
+                 ("*" row), not this. Plots raw L/R sample pairs fed via
+                 PlayerViewModel.PhasePairsReceived (subscribed once in MainWindow.xaml.cs,
+                 same procedural-code-behind pattern as BuildLufsScale/LufsScaleHost above —
+                 a streaming point cloud doesn't fit a static data-bound visual tree). -->
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center">
+                <local:PhasescopeControl x:Name="Phasescope" Width="180" Height="180" ClipToBounds="True" />
+                <!-- Boosts how far points are plotted from center (PhasescopeControl.Gain),
+                     not the actual audio signal — a quiet source would otherwise draw a tiny
+                     dot/sliver in the middle of the scope instead of a readable trace. -->
+                <Slider Margin="0,8,0,0" Minimum="1" Maximum="12" Value="{Binding Gain, ElementName=Phasescope}"
+                        ToolTip="{DynamicResource Str_PhasescopeGain}" />
+            </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

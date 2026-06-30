@@ -1,0 +1,37 @@
+<Window x:Class="LivewireBrowser.App.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Str_AboutTitle}" SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" Background="{StaticResource WindowBgBrush}">
+    <!-- SizeToContent="WidthAndHeight" (was a fixed Width) — the license bullets and repo
+         URL below are intentionally not TextWrapping="Wrap" (the bullets are short
+         standalone lines, the URL shouldn't break mid-address), so the window has to size
+         itself to the widest line rather than a hand-picked pixel width that would need
+         re-tuning per language/content change. -->
+    <StackPanel Margin="20">
+        <Image Source="/splash_icon.png" Width="64" Height="64" Margin="0,0,0,12" HorizontalAlignment="Center" />
+        <TextBlock x:Name="HeadingText" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"
+                   TextAlignment="Center" Margin="0,0,0,8" />
+        <TextBlock Text="{DynamicResource Str_AboutDescription}" FontSize="12" HorizontalAlignment="Center"
+                   TextAlignment="Center" Margin="0,0,0,8" />
+        <TextBlock Text="{DynamicResource Str_AboutCopyright}" FontSize="11"
+                   Foreground="{StaticResource TextTertiaryBrush}" HorizontalAlignment="Center"
+                   TextAlignment="Center" Margin="0,0,0,2" />
+        <TextBlock HorizontalAlignment="Center" FontSize="11" Margin="0,0,0,16">
+            <Hyperlink NavigateUri="https://github.com/ykmn/LivewireExplorer" RequestNavigate="OnHyperlinkRequestNavigate">https://github.com/ykmn/LivewireExplorer</Hyperlink>
+        </TextBlock>
+
+        <TextBlock HorizontalAlignment="Left" FontSize="11" Margin="0,0,0,4">
+            <Run Text="{DynamicResource Str_AboutLicensePrefix}" /><Hyperlink NavigateUri="https://www.gnu.org/licenses/gpl-3.0.html" RequestNavigate="OnHyperlinkRequestNavigate"><Run Text="{DynamicResource Str_AboutLicenseLinkText}" /></Hyperlink>
+        </TextBlock>
+        <TextBlock HorizontalAlignment="Left" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,16">
+            <Run Text="* " /><Run Text="{DynamicResource Str_AboutLicenseBullet1}" /><LineBreak />
+            <Run Text="* " /><Run Text="{DynamicResource Str_AboutLicenseBullet2}" /><LineBreak />
+            <Run Text="* " /><Run Text="{DynamicResource Str_AboutLicenseBullet3}" /><LineBreak />
+            <Run Text="* " /><Run Text="{DynamicResource Str_AboutLicenseBullet4}" /><LineBreak />
+            <Run Text="* " /><Run Text="{DynamicResource Str_AboutLicenseBullet5}" />
+        </TextBlock>
+
+        <Button Content="{DynamicResource Str_OK}" Width="80" HorizontalAlignment="Center" Click="OnOkClick" />
+    </StackPanel>
+</Window>

@@ -1,0 +1,238 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:LivewireBrowser.App">
+
+    <!-- Declared here (not in App.xaml) so the styles below can StaticResource it: a merged
+         dictionary can't see resources defined directly in the dictionary that merges it,
+         only its own. -->
+    <local:DisplayMemberPathConverter x:Key="DisplayMemberPathConverter" />
+    <local:ProgressFillConverter x:Key="ProgressFillConverter" />
+
+    <!-- Palette: "One Half Dark" (Atom/VS Code theme) — base background #282c34, foreground
+         #dcdfe4, accent colors (red/yellow/green/blue/purple) straight from its standard
+         16-color terminal palette. Blue (#61afef) reserved for interactive/clickable
+         elements (channel links, output device name, max-value reset text). The
+         background-family colors below (Window/Card/Control bg+border) are the original
+         One Half Dark values with HSL lightness multiplied by 1.3 ("на 30% светлее") —
+         text/accent/zone colors are left at their original values, only the dark base layer
+         was asked to be lighter. (A 5-color brand palette — navy/blue/orange/gray/white —
+         was tried here briefly and reverted; see HISTORY.md "Запрос 46" if it comes up
+         again.) -->
+    <SolidColorBrush x:Key="WindowBgBrush" Color="#343944" />
+    <SolidColorBrush x:Key="CardBgBrush" Color="#383E4A" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#4A5162" />
+    <SolidColorBrush x:Key="CardBorderHighlightBrush" Color="#575F73" />
+    <SolidColorBrush x:Key="ControlBgBrush" Color="#2D323B" />
+    <SolidColorBrush x:Key="ControlBgHoverBrush" Color="#383E4A" />
+    <SolidColorBrush x:Key="ControlBorderBrush" Color="#4A5162" />
+    <SolidColorBrush x:Key="AccentButtonBgBrush" Color="#383E4A" />
+    <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#4A5162" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#DCDFE4" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#ABB2BF" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#5C6370" />
+    <SolidColorBrush x:Key="AccentLinkBrush" Color="#61AFEF" />
+    <SolidColorBrush x:Key="StopRedBrush" Color="#E06C75" />
+    <SolidColorBrush x:Key="StopRedBorderBrush" Color="#B1535C" />
+    <SolidColorBrush x:Key="HighlightBgBrush" Color="#4A5162" />
+    <SolidColorBrush x:Key="HighlightBorderBrush" Color="#E5C07B" />
+    <SolidColorBrush x:Key="MeterZoneRedBrush" Color="#E06C75" />
+    <SolidColorBrush x:Key="MeterZoneYellowBrush" Color="#E5C07B" />
+    <SolidColorBrush x:Key="MeterZoneGreenBrush" Color="#98C379" />
+
+    <!-- Small corner radius everywhere by default — only the vertical meter bars keep a
+         larger radius (MeterBarTemplate below), per request "скругление индикаторов оставь
+         как есть". -->
+    <CornerRadius x:Key="DefaultCornerRadius">3</CornerRadius>
+
+    <Style TargetType="Window">
+        <Setter Property="Background" Value="{StaticResource WindowBgBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource ControlBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0.5" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Border" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource DefaultCornerRadius}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Margin="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource ControlBgHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="TextBox">
+        <Setter Property="Background" Value="{StaticResource ControlBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0.5" />
+        <Setter Property="Padding" Value="6,5" />
+        <Setter Property="SelectionBrush" Value="{StaticResource AccentLinkBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource DefaultCornerRadius}">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Border" Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource ControlBgHoverBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBox">
+        <Setter Property="Background" Value="{StaticResource ControlBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0.5" />
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton x:Name="ToggleButton" Background="{TemplateBinding Background}"
+                                       BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                       IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                       ClickMode="Press" Focusable="False">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource DefaultCornerRadius}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="18" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Grid.Column="1" Data="M0,0 L4,4 L8,0 Z" Fill="{StaticResource TextSecondaryBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <TextBlock x:Name="ContentSite" IsHitTestVisible="False" Foreground="{TemplateBinding Foreground}"
+                                    Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis">
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource DisplayMemberPathConverter}">
+                                    <Binding Path="SelectedItem" RelativeSource="{RelativeSource TemplatedParent}" />
+                                    <Binding Path="DisplayMemberPath" RelativeSource="{RelativeSource TemplatedParent}" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
+                                AllowsTransparency="True" Focusable="False" PopupAnimation="None">
+                            <Border Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource ControlBorderBrush}"
+                                     BorderThickness="0.5" CornerRadius="{StaticResource DefaultCornerRadius}"
+                                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="260">
+                                <ScrollViewer Margin="2" SnapsToDevicePixels="True">
+                                    <StackPanel IsItemsHost="True" />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style TargetType="ListView">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style TargetType="GridViewColumnHeader">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="BorderThickness" Value="0,0,0,0.5" />
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridViewColumnHeader">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Default (horizontal) progress bars: colors only, no Template override — keeps the
+         system's native indeterminate animation for the scan/rescan progress bars instead
+         of reimplementing it. -->
+    <Style TargetType="ProgressBar">
+        <Setter Property="Background" Value="{StaticResource ControlBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0.5" />
+    </Style>
+
+    <Style TargetType="Slider">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="{StaticResource ControlBgBrush}" />
+    </Style>
+
+    <Style TargetType="StatusBar">
+        <Setter Property="Background" Value="{StaticResource CardBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="{StaticResource WindowBgBrush}" />
+    </Style>
+
+    <Style TargetType="MenuItem">
+        <Setter Property="Background" Value="{StaticResource CardBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+</ResourceDictionary>

@@ -1,0 +1,95 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Marker used by Loc.Apply to find and remove the previously merged language
+         dictionary before adding the new one. -->
+    <sys:String x:Key="__LanguageDictionary">en</sys:String>
+
+    <sys:String x:Key="Str_Scan">Scan</sys:String>
+    <sys:String x:Key="Str_ToggleStop">Stop</sys:String>
+    <sys:String x:Key="Str_PlayerStop">Stop</sys:String>
+    <sys:String x:Key="Str_Rescan">Rescan</sys:String>
+    <sys:String x:Key="Str_LastScanLabel">Last scan:</sys:String>
+    <sys:String x:Key="Str_Settings">Settings</sys:String>
+    <sys:String x:Key="Str_Sort">Sort:</sys:String>
+    <sys:String x:Key="Str_Search">Search:</sys:String>
+    <sys:String x:Key="Str_ClearSearchTooltip">Clear search</sys:String>
+    <sys:String x:Key="Str_Channel">Channel:</sys:String>
+    <sys:String x:Key="Str_Output">Output:</sys:String>
+    <sys:String x:Key="Str_OutputNotSelected">(not selected)</sys:String>
+    <sys:String x:Key="Str_Volume">Volume:</sys:String>
+    <sys:String x:Key="Str_PhasescopeGain">Phasescope gain</sys:String>
+    <sys:String x:Key="Str_DevicesCountLabel">Devices:</sys:String>
+    <sys:String x:Key="Str_ChannelNumberHeader">#</sys:String>
+    <sys:String x:Key="Str_LwHeader">LW</sys:String>
+    <sys:String x:Key="Str_ChannelNameHeader">Channel name</sys:String>
+    <sys:String x:Key="Str_NoChannelName">(no name)</sys:String>
+    <sys:String x:Key="Str_ResetMaxTooltip">Reset max</sys:String>
+
+    <sys:String x:Key="Str_About">About</sys:String>
+    <sys:String x:Key="Str_AboutTitle">About</sys:String>
+    <sys:String x:Key="Str_AboutHeading">Livewire Explorer {0} {1}</sys:String>
+    <sys:String x:Key="Str_AboutDescription">Discover devices on a Livewire AoIP network, listen to channels.</sys:String>
+    <sys:String x:Key="Str_AboutCopyright">© 2026 Roman Ermakov</sys:String>
+    <sys:String x:Key="Str_AboutLicensePrefix">License:&#160;</sys:String>
+    <sys:String x:Key="Str_AboutLicenseLinkText">GNU GPL v3</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet1">open source code</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet2">can be used commercially and modified</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet3">source code must be published when distributed</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet4">modifying the project cannot make it closed-source</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet5">any derivative work also becomes GPL v3</sys:String>
+    <sys:String x:Key="Str_OK">OK</sys:String>
+
+    <sys:String x:Key="Str_CategoryAnalogNode">Analog nodes</sys:String>
+    <sys:String x:Key="Str_CategoryDigitalNode">Digital nodes</sys:String>
+    <sys:String x:Key="Str_CategoryEngine">Element</sys:String>
+    <sys:String x:Key="Str_CategoryFusion">Fusion</sys:String>
+    <sys:String x:Key="Str_CategoryCodec">Codecs</sys:String>
+    <sys:String x:Key="Str_CategoryProcessor">Processors</sys:String>
+    <sys:String x:Key="Str_CategoryTelephoneHybrid">Telephone hybrids</sys:String>
+    <sys:String x:Key="Str_CategoryIpDriver">IP drivers</sys:String>
+    <sys:String x:Key="Str_CategoryGpio">GPIO</sys:String>
+    <sys:String x:Key="Str_CategoryOther">Other</sys:String>
+
+    <sys:String x:Key="Str_SortByClass">By class</sys:String>
+    <sys:String x:Key="Str_SortByIp">By IP address</sys:String>
+    <sys:String x:Key="Str_SortByName">By name</sys:String>
+
+    <sys:String x:Key="Str_DiscoveryBruteForce">Brute-force scan</sys:String>
+    <sys:String x:Key="Str_DiscoveryBruteForceAndAdvertisement">Brute-force + advertisements</sys:String>
+    <sys:String x:Key="Str_DiscoveryAdvertisementOnly">Advertisements only</sys:String>
+
+    <sys:String x:Key="Str_StatusStopping">Stopping scan...</sys:String>
+    <sys:String x:Key="Str_StatusScanStarted">Network scan started...</sys:String>
+    <sys:String x:Key="Str_StatusScanCancelled">Scan stopped</sys:String>
+    <sys:String x:Key="Str_StatusScanError">Scan failed — see log</sys:String>
+
+    <sys:String x:Key="Str_NetworkInterface">Livewire network interface:</sys:String>
+    <sys:String x:Key="Str_Refresh">Refresh</sys:String>
+    <sys:String x:Key="Str_DiscoveryModeLabel">Device discovery method:</sys:String>
+    <sys:String x:Key="Str_RescanPeriodLabel">Automatic full rescan period (minutes, 0 = disabled):</sys:String>
+    <sys:String x:Key="Str_CachePathLabel">Device cache file path:</sys:String>
+    <sys:String x:Key="Str_ClearCache">Clear cache</sys:String>
+    <sys:String x:Key="Str_LogFolderLabel">Log files folder:</sys:String>
+    <sys:String x:Key="Str_OpenLogsFolder">Open logs folder</sys:String>
+    <sys:String x:Key="Str_LogLevelLabel">Log level:</sys:String>
+    <sys:String x:Key="Str_LanguageLabel">Language:</sys:String>
+    <sys:String x:Key="Str_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Str_Save">Save</sys:String>
+    <sys:String x:Key="Str_SettingsTitle">Settings</sys:String>
+    <sys:String x:Key="Str_ErrorTitle">Error</sys:String>
+    <sys:String x:Key="Str_ErrorMinutes">Enter a whole number of minutes (0 or more).</sys:String>
+    <sys:String x:Key="Str_Done">Done</sys:String>
+    <sys:String x:Key="Str_CacheCleared">Device cache cleared.</sys:String>
+    <sys:String x:Key="Str_LanguageEnglish">English</sys:String>
+    <sys:String x:Key="Str_LanguageRussian">Russian</sys:String>
+
+    <sys:String x:Key="Str_SelectOutputDevice">Select audio device</sys:String>
+    <sys:String x:Key="Str_Select">Select</sys:String>
+
+    <sys:String x:Key="Str_SplashStarting">Starting application...</sys:String>
+    <sys:String x:Key="Str_SplashLoading">Loading settings and device cache...</sys:String>
+    <sys:String x:Key="Str_SplashReady">Ready</sys:String>
+
+</ResourceDictionary>

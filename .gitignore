@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+release/data/
+release/logs/
+binary/data/
+binary/logs/
+

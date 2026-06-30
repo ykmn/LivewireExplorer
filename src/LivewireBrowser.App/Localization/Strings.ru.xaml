@@ -1,0 +1,93 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="__LanguageDictionary">ru</sys:String>
+
+    <sys:String x:Key="Str_Scan">Скан</sys:String>
+    <sys:String x:Key="Str_ToggleStop">Остановить</sys:String>
+    <sys:String x:Key="Str_PlayerStop">Стоп</sys:String>
+    <sys:String x:Key="Str_Rescan">Пересканировать</sys:String>
+    <sys:String x:Key="Str_LastScanLabel">Последний скан:</sys:String>
+    <sys:String x:Key="Str_Settings">Настройки</sys:String>
+    <sys:String x:Key="Str_Sort">Сортировка:</sys:String>
+    <sys:String x:Key="Str_Search">Поиск:</sys:String>
+    <sys:String x:Key="Str_ClearSearchTooltip">Очистить поиск</sys:String>
+    <sys:String x:Key="Str_Channel">Канал:</sys:String>
+    <sys:String x:Key="Str_Output">Выход:</sys:String>
+    <sys:String x:Key="Str_OutputNotSelected">(не выбрано)</sys:String>
+    <sys:String x:Key="Str_Volume">Громкость:</sys:String>
+    <sys:String x:Key="Str_PhasescopeGain">Усиление фазоскопа</sys:String>
+    <sys:String x:Key="Str_DevicesCountLabel">Устройств:</sys:String>
+    <sys:String x:Key="Str_ChannelNumberHeader">№</sys:String>
+    <sys:String x:Key="Str_LwHeader">LW</sys:String>
+    <sys:String x:Key="Str_ChannelNameHeader">Имя канала</sys:String>
+    <sys:String x:Key="Str_NoChannelName">(без имени)</sys:String>
+    <sys:String x:Key="Str_ResetMaxTooltip">Сбросить максимум</sys:String>
+
+    <sys:String x:Key="Str_About">О программе</sys:String>
+    <sys:String x:Key="Str_AboutTitle">О программе</sys:String>
+    <sys:String x:Key="Str_AboutHeading">Livewire Explorer {0} {1}</sys:String>
+    <sys:String x:Key="Str_AboutDescription">Поиск устройств в AoIP-сети Livewire, прослушивание каналов.</sys:String>
+    <sys:String x:Key="Str_AboutCopyright">© 2026 Роман Ермаков</sys:String>
+    <sys:String x:Key="Str_AboutLicensePrefix">Лицензия:&#160;</sys:String>
+    <sys:String x:Key="Str_AboutLicenseLinkText">GNU GPL v3</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet1">открытый исходный код</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet2">можно использовать в коммерческих целях и модифицировать</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet3">при распространении обязательно публиковать исходный код</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet4">при модификации нельзя делать проект закрытым</sys:String>
+    <sys:String x:Key="Str_AboutLicenseBullet5">любые производные работы также становятся GPL v3</sys:String>
+    <sys:String x:Key="Str_OK">OK</sys:String>
+
+    <sys:String x:Key="Str_CategoryAnalogNode">Аналоговые ноды</sys:String>
+    <sys:String x:Key="Str_CategoryDigitalNode">Цифровые ноды</sys:String>
+    <sys:String x:Key="Str_CategoryEngine">Element</sys:String>
+    <sys:String x:Key="Str_CategoryFusion">Fusion</sys:String>
+    <sys:String x:Key="Str_CategoryCodec">Кодеки</sys:String>
+    <sys:String x:Key="Str_CategoryProcessor">Процессоры</sys:String>
+    <sys:String x:Key="Str_CategoryTelephoneHybrid">Телефонные гибриды</sys:String>
+    <sys:String x:Key="Str_CategoryIpDriver">IP-драйверы</sys:String>
+    <sys:String x:Key="Str_CategoryGpio">GPIO</sys:String>
+    <sys:String x:Key="Str_CategoryOther">Прочее</sys:String>
+
+    <sys:String x:Key="Str_SortByClass">По классу</sys:String>
+    <sys:String x:Key="Str_SortByIp">По IP-адресу</sys:String>
+    <sys:String x:Key="Str_SortByName">По названию</sys:String>
+
+    <sys:String x:Key="Str_DiscoveryBruteForce">Поиск перебором</sys:String>
+    <sys:String x:Key="Str_DiscoveryBruteForceAndAdvertisement">Поиск перебором и по анонсам</sys:String>
+    <sys:String x:Key="Str_DiscoveryAdvertisementOnly">Поиск по анонсам</sys:String>
+
+    <sys:String x:Key="Str_StatusStopping">Остановка сканирования...</sys:String>
+    <sys:String x:Key="Str_StatusScanStarted">Сканирование сети запущено...</sys:String>
+    <sys:String x:Key="Str_StatusScanCancelled">Сканирование остановлено</sys:String>
+    <sys:String x:Key="Str_StatusScanError">Ошибка сканирования — см. лог</sys:String>
+
+    <sys:String x:Key="Str_NetworkInterface">Сетевой интерфейс Livewire:</sys:String>
+    <sys:String x:Key="Str_Refresh">Обновить</sys:String>
+    <sys:String x:Key="Str_DiscoveryModeLabel">Способ поиска устройств:</sys:String>
+    <sys:String x:Key="Str_RescanPeriodLabel">Период автоматического полного пересканирования (мин, 0 = выключено):</sys:String>
+    <sys:String x:Key="Str_CachePathLabel">Путь к файлу кэша устройств:</sys:String>
+    <sys:String x:Key="Str_ClearCache">Сбросить кэш</sys:String>
+    <sys:String x:Key="Str_LogFolderLabel">Папка с лог-файлами:</sys:String>
+    <sys:String x:Key="Str_OpenLogsFolder">Открыть папку логов</sys:String>
+    <sys:String x:Key="Str_LogLevelLabel">Глубина логирования:</sys:String>
+    <sys:String x:Key="Str_LanguageLabel">Язык:</sys:String>
+    <sys:String x:Key="Str_Cancel">Отмена</sys:String>
+    <sys:String x:Key="Str_Save">Сохранить</sys:String>
+    <sys:String x:Key="Str_SettingsTitle">Настройки</sys:String>
+    <sys:String x:Key="Str_ErrorTitle">Ошибка</sys:String>
+    <sys:String x:Key="Str_ErrorMinutes">Введите целое число минут (0 или больше).</sys:String>
+    <sys:String x:Key="Str_Done">Готово</sys:String>
+    <sys:String x:Key="Str_CacheCleared">Кэш устройств удалён.</sys:String>
+    <sys:String x:Key="Str_LanguageEnglish">English</sys:String>
+    <sys:String x:Key="Str_LanguageRussian">Русский</sys:String>
+
+    <sys:String x:Key="Str_SelectOutputDevice">Выбор звукового устройства</sys:String>
+    <sys:String x:Key="Str_Select">Выбрать</sys:String>
+
+    <sys:String x:Key="Str_SplashStarting">Запуск приложения...</sys:String>
+    <sys:String x:Key="Str_SplashLoading">Загрузка настроек и кэша устройств...</sys:String>
+    <sys:String x:Key="Str_SplashReady">Готово</sys:String>
+
+</ResourceDictionary>
