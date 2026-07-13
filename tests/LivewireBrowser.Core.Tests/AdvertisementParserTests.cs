@@ -50,4 +50,48 @@ public class AdvertisementParserTests
         Assert.Equal("Program 1", channel.Name);
         Assert.Equal(5004, channel.Port);
     }
+
+    [Fact]
+    public void Parse_SourceWithBusyTag_DoesNotAbortScanOfLaterSources()
+    {
+        // Synthetic packet (hand-built per the documented TLV grammar, not a live
+        // capture): device "Test-Node" (TYPE "NX12"), then a "lightweight" source
+        // block (S001: INDI+PSID+BUSY only, no FSID/PSNM — the shape real devices
+        // use for a source with no configured name), followed by a normal source
+        // block (S002: PSID+FSID+PSNM). Before the 0x09 (BUSY) width fix, hitting
+        // BUSY's type byte aborted the scan and S002 was silently never parsed.
+        var packet = HexToBytes(
+            "03 00 02 07 00 00 00 00 00 00 00 00 00 00 00 00 " +
+            "41 54 52 4E 03 00 09 54 65 73 74 2D 4E 6F 64 65 " +
+            "54 59 50 45 01 4E 58 31 32 " +
+            "53 30 30 31 06 00 65 " +
+            "49 4E 44 49 00 01 " +
+            "50 53 49 44 01 00 00 00 05 " +
+            "42 55 53 59 09 00 00 00 00 00 00 00 00 " +
+            "53 30 30 32 06 00 1C " +
+            "49 4E 44 49 00 01 " +
+            "50 53 49 44 01 00 00 00 06 " +
+            "46 53 49 44 01 EF C0 00 06 " +
+            "50 53 4E 4D 03 00 06 53 74 75 64 69 6F");
+
+        var parsed = AdvertisementParser.Parse(packet);
+
+        Assert.Equal("Test-Node", parsed.DeviceName);
+        Assert.Equal("NX12", parsed.DeviceType);
+        Assert.Equal(2, parsed.Channels.Count);
+
+        var lightweight = parsed.Channels[0];
+        Assert.Equal(1, lightweight.ChannelNumber);
+        Assert.Equal(5, lightweight.LwNumber);
+        Assert.Equal("239.192.0.5", lightweight.MulticastAddress);
+        Assert.Equal("Channel 1", lightweight.Name); // no PSNM -> fallback name
+        Assert.Equal(5004, lightweight.Port);
+
+        var named = parsed.Channels[1];
+        Assert.Equal(2, named.ChannelNumber);
+        Assert.Equal(6, named.LwNumber);
+        Assert.Equal("239.192.0.6", named.MulticastAddress);
+        Assert.Equal("Studio", named.Name);
+        Assert.Equal(5004, named.Port);
+    }
 }

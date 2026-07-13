@@ -28,10 +28,10 @@ public class AdvertisementListener
     private static readonly IPAddress AdvertisementMulticastAddress = IPAddress.Parse("239.192.255.3");
     private const int AdvertisementPort = 4001;
 
-    public async Task<Dictionary<string, (string? DeviceName, List<ChannelInfo> Channels)>> ListenAsync(
+    public async Task<Dictionary<string, (string? DeviceName, List<ChannelInfo> Channels, string? DeviceType)>> ListenAsync(
         TimeSpan duration, string? localInterfaceAddress, CancellationToken ct = default)
     {
-        var byIp = new Dictionary<string, (string? DeviceName, List<ChannelInfo> Channels)>();
+        var byIp = new Dictionary<string, (string? DeviceName, List<ChannelInfo> Channels, string? DeviceType)>();
         var packetCount = 0;
 
         try
@@ -71,9 +71,10 @@ public class AdvertisementListener
                         continue; // periodic beacon — no source/name info to merge
 
                     if (!byIp.TryGetValue(sourceIp, out var existing))
-                        existing = (null, new List<ChannelInfo>());
+                        existing = (null, new List<ChannelInfo>(), null);
 
                     var deviceName = parsed.DeviceName ?? existing.DeviceName;
+                    var deviceType = parsed.DeviceType ?? existing.DeviceType;
                     var channels = existing.Channels;
                     foreach (var channel in parsed.Channels)
                     {
@@ -81,7 +82,7 @@ public class AdvertisementListener
                             channels.Add(channel);
                     }
 
-                    byIp[sourceIp] = (deviceName, channels);
+                    byIp[sourceIp] = (deviceName, channels, deviceType);
 
                     Log.Info($"AdvertisementListener: {sourceIp} -> name '{parsed.DeviceName}', {parsed.Channels.Count} channel(s) in this packet");
                 }

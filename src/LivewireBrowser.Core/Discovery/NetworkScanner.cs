@@ -46,15 +46,26 @@ public class NetworkScanner
         if (mode == DiscoveryMode.AdvertisementOnly)
             status?.Report($"Advertisement scan: passive listening for {advertisementListenDuration.TotalSeconds:0}s...");
 
+        // Connect timeout stays short — on a real LAN, a non-existent host either RSTs
+        // or is unreachable almost immediately, and most of the 4096 swept addresses
+        // have nothing listening at all. Query timeout is separate and more generous:
+        // a real device's multi-line SRC response (up to 24 sources) can take longer
+        // than a couple hundred ms to fully arrive, and a too-short window here doesn't
+        // just miss data — LwrpClient reuses the same socket across VER/SRC/IP, so a
+        // response that's still arriving when the next command is sent gets read (and
+        // misattributed) as part of that next command's reply instead, corrupting
+        // both — confirmed on a live capture where a device's SRC channel list was cut
+        // off after just "BEGIN" and its actual SRC lines ended up logged under the
+        // following "IP" query.
         var lwrpTask = bruteForce
-            ? _lwrpScanner.ScanSubnetAsync(NetworkInterfaceAddress, TimeSpan.FromMilliseconds(300), progress, status, ct)
+            ? _lwrpScanner.ScanSubnetAsync(NetworkInterfaceAddress, TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(800), progress, status, ct)
             : Task.FromResult(new List<DeviceInfo>());
         var sapTask = advertisement
             ? _sapListener.ListenAsync(advertisementListenDuration, NetworkInterfaceAddress, ct)
             : Task.FromResult(new Dictionary<string, List<ChannelInfo>>());
         var advertisementTask = advertisement
             ? _advertisementListener.ListenAsync(advertisementListenDuration, NetworkInterfaceAddress, ct)
-            : Task.FromResult(new Dictionary<string, (string? DeviceName, List<ChannelInfo> Channels)>());
+            : Task.FromResult(new Dictionary<string, (string? DeviceName, List<ChannelInfo> Channels, string? DeviceType)>());
 
         await Task.WhenAll(lwrpTask, sapTask, advertisementTask);
 
@@ -104,12 +115,16 @@ public class NetworkScanner
                 continue;
 
             var name = advertised.DeviceName ?? $"Livewire device ({ip})";
+            // TYPE (a 4-char model code, e.g. "NX12") is the device's own reported
+            // model when Advertisement is the only source that saw it — falls back
+            // to the generic placeholder only when a device doesn't send TYPE.
+            var model = advertised.DeviceType ?? "Livewire Advertisement";
             devices.Add(new DeviceInfo
             {
                 Ip = ip,
-                Model = "Livewire Advertisement",
+                Model = model,
                 Name = name,
-                Category = DeviceClassifier.Classify(name),
+                Category = DeviceClassifier.Classify(model),
                 LastScanned = DateTime.UtcNow,
                 Channels = advertised.Channels.OrderBy(c => c.ChannelNumber).ToList(),
             });
@@ -123,7 +138,7 @@ public class NetworkScanner
     {
         Log.Info($"NetworkScanner: rescanning device {existing.Ip}");
 
-        var updated = await _lwrpScanner.ProbeHostAsync(existing.Ip, timeout, status, ct) ?? existing;
+        var updated = await _lwrpScanner.ProbeHostAsync(existing.Ip, timeout, timeout, status, ct) ?? existing;
         updated.Ip = existing.Ip;
         updated.LastScanned = DateTime.UtcNow;
 
