@@ -22,6 +22,7 @@ public static class DeviceClassifier
         ["Z/IPStream"] = DeviceCategory.Codec,
         ["Quasar"] = DeviceCategory.Engine,
         ["VX Prime"] = DeviceCategory.TelephoneHybrid,
+        ["VX Engine"] = DeviceCategory.TelephoneHybrid,
         ["Telos Hx"] = DeviceCategory.TelephoneHybrid,
         ["Telos VX"] = DeviceCategory.TelephoneHybrid,
         ["2x12"] = DeviceCategory.TelephoneHybrid,

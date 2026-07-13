@@ -13,6 +13,7 @@ public class DeviceClassifierTests
     [InlineData("Fusion Mixing Console", DeviceCategory.Fusion)]
     [InlineData("Z/IPStream X/2", DeviceCategory.Codec)]
     [InlineData("Telos VX Prime", DeviceCategory.TelephoneHybrid)]
+    [InlineData("Telos VX Engine", DeviceCategory.TelephoneHybrid)]
     [InlineData("Unknown Device 9000", DeviceCategory.Other)]
     [InlineData("Nx12 SYSV:1.2", DeviceCategory.TelephoneHybrid)]
     [InlineData("Z/IP ONE NSRC:1", DeviceCategory.Codec)]

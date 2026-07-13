@@ -7,6 +7,6 @@ namespace LivewireBrowser.Core;
 /// </summary>
 public static class AppVersion
 {
-    public const string Version = "0.01.046";
+    public const string Version = "0.01.047";
     public const string ReleaseDate = "2026-07-13";
 }
