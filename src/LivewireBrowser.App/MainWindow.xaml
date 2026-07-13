@@ -83,8 +83,6 @@
         <Style x:Key="SearchNavButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Width" Value="30" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="12" />
         </Style>
     </Window.Resources>
 
@@ -140,20 +138,41 @@
                 <Button Grid.Column="5" Content="{DynamicResource Str_Settings}" Width="100" Margin="16,0,0,0" Padding="4" Click="OnSettingsClick" />
 
                 <Button Grid.Column="6" Padding="4" Margin="8,0,0,0" Click="OnAboutClick" ToolTip="{DynamicResource Str_About}">
-                    <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="15" />
+                    <!-- Drawn as vector shapes, not a "Segoe MDL2 Assets" glyph — that icon font
+                         doesn't exist on Windows 7, where it silently falls back to tofu boxes.
+                         A Path/Ellipse renders identically on every Windows version. -->
+                    <Grid Width="15" Height="15">
+                        <Ellipse Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.2" />
+                        <TextBlock Text="i" FontWeight="Bold" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0" />
+                    </Grid>
                 </Button>
             </Grid>
             <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                 <TextBlock Text="{DynamicResource Str_Search}" VerticalAlignment="Center" />
                 <TextBox x:Name="SearchTextBox" Width="240" MinHeight="28" Padding="6,4" Margin="6,0,0,0"
                          VerticalContentAlignment="Center" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Content="&#xE711;" Margin="6,0,0,0" Command="{Binding ClearSearchCommand}"
+                <!-- Icons below are vector Paths, not "Segoe MDL2 Assets" glyphs — see the About
+                     button's comment above for why (missing on Windows 7). -->
+                <Button Margin="6,0,0,0" Command="{Binding ClearSearchCommand}"
                         ToolTip="{DynamicResource Str_ClearSearchTooltip}"
-                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}" />
-                <Button Content="&#xE76B;" Margin="4,0,0,0" Command="{Binding PreviousMatchCommand}"
-                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}" />
-                <Button Content="&#xE76C;" Margin="4,0,0,0" Command="{Binding NextMatchCommand}"
-                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}" />
+                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}">
+                    <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextPrimaryBrush}"
+                          StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          Data="M0,0 L10,10 M10,0 L0,10" />
+                </Button>
+                <Button Margin="4,0,0,0" Command="{Binding PreviousMatchCommand}"
+                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}">
+                    <Path Width="10" Height="6" Stretch="Uniform" Stroke="{StaticResource TextPrimaryBrush}"
+                          StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                          Data="M0,6 L5,0 L10,6" />
+                </Button>
+                <Button Margin="4,0,0,0" Command="{Binding NextMatchCommand}"
+                        Height="{Binding ActualHeight, ElementName=SearchTextBox}" Style="{StaticResource SearchNavButtonStyle}">
+                    <Path Width="10" Height="6" Stretch="Uniform" Stroke="{StaticResource TextPrimaryBrush}"
+                          StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                          Data="M0,0 L5,6 L10,0" />
+                </Button>
                 <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding SearchStatusText}" />
             </StackPanel>
         </StackPanel>

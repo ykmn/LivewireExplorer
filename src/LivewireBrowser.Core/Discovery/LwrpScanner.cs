@@ -18,7 +18,7 @@ public class LwrpScanner
     private const int DefaultLivewireRtpPort = 5004;
     private const int MaxConcurrentProbes = 64;
 
-    public async Task<List<DeviceInfo>> ScanSubnetAsync(string? localInterfaceAddress, TimeSpan perHostTimeout,
+    public async Task<List<DeviceInfo>> ScanSubnetAsync(string? localInterfaceAddress, TimeSpan connectTimeout, TimeSpan queryTimeout,
         IProgress<(int Completed, int Total)>? progress = null, IProgress<string>? status = null, CancellationToken ct = default)
     {
         var hosts = NetworkInterfaceHelper.GetHostAddresses(localInterfaceAddress);
@@ -43,7 +43,7 @@ public class LwrpScanner
             await semaphore.WaitAsync(ct);
             try
             {
-                var device = await ProbeHostAsync(ip, perHostTimeout, status, ct);
+                var device = await ProbeHostAsync(ip, connectTimeout, queryTimeout, status, ct);
                 if (device != null)
                 {
                     lock (resultsLock)
@@ -65,35 +65,44 @@ public class LwrpScanner
         return results;
     }
 
-    public async Task<DeviceInfo?> ProbeHostAsync(string ip, TimeSpan timeout, IProgress<string>? status = null, CancellationToken ct = default)
+    public async Task<DeviceInfo?> ProbeHostAsync(string ip, TimeSpan connectTimeout, TimeSpan queryTimeout, IProgress<string>? status = null, CancellationToken ct = default)
     {
-        // Independent of the LWRP session, so kick it off immediately and only wait on
-        // it once we already have a device to name.
-        var dnsTask = ReverseDns.TryResolveShortNameAsync(ip, TimeSpan.FromMilliseconds(800));
-
         status?.Report($"{ip}: checking TCP/93...");
 
         using var client = new LwrpClient();
         try
         {
-            if (!await client.ConnectAsync(ip, timeout, ct))
+            if (!await client.ConnectAsync(ip, connectTimeout, ct))
                 return null;
+
+            // Only worth resolving once something is actually listening on TCP/93 —
+            // starting this for every swept address (the vast majority of which have
+            // no device at all on a typical /16 sweep) floods the OS resolver with
+            // thousands of concurrent lookups that outlive this method's own
+            // MaxConcurrentProbes gate (ProbeHostAsync returns as soon as ConnectAsync
+            // fails, but a detached dnsTask keeps running) — in practice this serializes
+            // on the resolver and can keep a subnet sweep "running" for minutes after
+            // every real device has already answered, while also starving the thread
+            // pool for unrelated concurrent work (SAP/Advertisement listening, UI
+            // updates). Independent of the LWRP session, so still kick it off now and
+            // only wait on it once we already have a device to name.
+            var dnsTask = ReverseDns.TryResolveShortNameAsync(ip, TimeSpan.FromMilliseconds(800));
 
             Log.Debug($"LwrpScanner: {ip} responded on TCP/{LwrpClient.Port}, querying VER/SRC");
             status?.Report($"{ip}: device found, querying VER...");
 
-            var verLines = await client.QueryAsync("VER", timeout, ct);
+            var verLines = await client.QueryAsync("VER", queryTimeout, ct);
 
             status?.Report($"{ip}: querying SRC (channel list)...");
-            var srcLines = await client.QueryAsync("SRC", timeout, ct);
+            var srcLines = await client.QueryAsync("SRC", queryTimeout, ct);
             if (srcLines.Count == 0)
             {
                 Log.Debug($"LwrpScanner: {ip} gave no response to 'SRC', trying 'SRC ALL'");
-                srcLines = await client.QueryAsync("SRC ALL", timeout, ct);
+                srcLines = await client.QueryAsync("SRC ALL", queryTimeout, ct);
             }
 
             status?.Report($"{ip}: querying IP (configured device name)...");
-            var ipLines = await client.QueryAsync("IP", timeout, ct);
+            var ipLines = await client.QueryAsync("IP", queryTimeout, ct);
 
             foreach (var line in verLines)
                 Log.Debug($"LwrpScanner: {ip} VER> {line}");
