@@ -15,6 +15,18 @@ public class AppSettingsTests : IDisposable
         Assert.Equal(0, settings.AutoRescanPeriodMinutes);
         Assert.Equal(LogLevel.Warn, settings.LogLevel);
         Assert.Equal(AppLanguage.English, settings.Language);
+        Assert.Equal(4096, settings.MaxSweepHosts);
+    }
+
+    [Fact]
+    public void SaveThenLoad_RoundTripsMaxSweepHosts()
+    {
+        var settings = new AppSettings { MaxSweepHosts = 65536 };
+
+        settings.Save(_tempFile);
+        var loaded = AppSettings.Load(_tempFile);
+
+        Assert.Equal(65536, loaded.MaxSweepHosts);
     }
 
     [Fact]

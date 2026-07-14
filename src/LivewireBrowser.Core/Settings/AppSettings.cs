@@ -19,6 +19,14 @@ public class AppSettings
     public DiscoveryMode DiscoveryMode { get; set; } = DiscoveryMode.BruteForceAndAdvertisement;
 
     /// <summary>
+    /// Cap on how many hosts the TCP/93 (LWRP) subnet sweep will probe, starting from
+    /// network+1 (see NetworkInterfaceHelper.GetHostAddresses). Default keeps a /16
+    /// interface's sweep fast; raise up to 65536 to cover a full /16 at the cost of
+    /// scan duration.
+    /// </summary>
+    public int MaxSweepHosts { get; set; } = 4096;
+
+    /// <summary>
     /// Minimum level written to logs/app-*.log. Defaults to Warn for new installs to keep
     /// the log file small during normal use — switch to Debug here when diagnosing an
     /// issue (e.g. the playback format/discovery bugs this app's history is full of).

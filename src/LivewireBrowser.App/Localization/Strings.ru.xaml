@@ -24,6 +24,7 @@
     <sys:String x:Key="Str_ChannelNameHeader">Имя канала</sys:String>
     <sys:String x:Key="Str_NoChannelName">(без имени)</sys:String>
     <sys:String x:Key="Str_ResetMaxTooltip">Сбросить максимум</sys:String>
+    <sys:String x:Key="Str_OpenInBrowserTooltip">Открыть в браузере</sys:String>
 
     <sys:String x:Key="Str_About">О программе</sys:String>
     <sys:String x:Key="Str_AboutTitle">О программе</sys:String>
@@ -67,6 +68,8 @@
     <sys:String x:Key="Str_Refresh">Обновить</sys:String>
     <sys:String x:Key="Str_DiscoveryModeLabel">Способ поиска устройств:</sys:String>
     <sys:String x:Key="Str_RescanPeriodLabel">Период автоматического полного пересканирования (мин, 0 = выключено):</sys:String>
+    <sys:String x:Key="Str_MaxSweepHostsLabel">Лимит хостов при обходе подсети:</sys:String>
+    <sys:String x:Key="Str_MaxSweepHostsTooltip">Максимальное число адресов, опрашиваемых по TCP/93 во время сканирования. Увеличение (например, для покрытия подсети /16) находит больше устройств, но пропорционально увеличивает время скана. По умолчанию 4096, максимум 65536.</sys:String>
     <sys:String x:Key="Str_CachePathLabel">Путь к файлу кэша устройств:</sys:String>
     <sys:String x:Key="Str_ClearCache">Сбросить кэш</sys:String>
     <sys:String x:Key="Str_LogFolderLabel">Папка с лог-файлами:</sys:String>
@@ -78,6 +81,7 @@
     <sys:String x:Key="Str_SettingsTitle">Настройки</sys:String>
     <sys:String x:Key="Str_ErrorTitle">Ошибка</sys:String>
     <sys:String x:Key="Str_ErrorMinutes">Введите целое число минут (0 или больше).</sys:String>
+    <sys:String x:Key="Str_ErrorMaxSweepHosts">Введите целое число хостов от 1 до 65536.</sys:String>
     <sys:String x:Key="Str_Done">Готово</sys:String>
     <sys:String x:Key="Str_CacheCleared">Кэш устройств удалён.</sys:String>
     <sys:String x:Key="Str_LanguageEnglish">English</sys:String>

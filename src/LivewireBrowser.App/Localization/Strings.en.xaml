@@ -26,6 +26,7 @@
     <sys:String x:Key="Str_ChannelNameHeader">Channel name</sys:String>
     <sys:String x:Key="Str_NoChannelName">(no name)</sys:String>
     <sys:String x:Key="Str_ResetMaxTooltip">Reset max</sys:String>
+    <sys:String x:Key="Str_OpenInBrowserTooltip">Open in browser</sys:String>
 
     <sys:String x:Key="Str_About">About</sys:String>
     <sys:String x:Key="Str_AboutTitle">About</sys:String>
@@ -69,6 +70,8 @@
     <sys:String x:Key="Str_Refresh">Refresh</sys:String>
     <sys:String x:Key="Str_DiscoveryModeLabel">Device discovery method:</sys:String>
     <sys:String x:Key="Str_RescanPeriodLabel">Automatic full rescan period (minutes, 0 = disabled):</sys:String>
+    <sys:String x:Key="Str_MaxSweepHostsLabel">Subnet sweep host limit:</sys:String>
+    <sys:String x:Key="Str_MaxSweepHostsTooltip">Maximum number of addresses probed on TCP/93 during a scan. Raising this (e.g. to cover a /16 subnet) finds more devices but makes each scan take proportionally longer. Default 4096, max 65536.</sys:String>
     <sys:String x:Key="Str_CachePathLabel">Device cache file path:</sys:String>
     <sys:String x:Key="Str_ClearCache">Clear cache</sys:String>
     <sys:String x:Key="Str_LogFolderLabel">Log files folder:</sys:String>
@@ -80,6 +83,7 @@
     <sys:String x:Key="Str_SettingsTitle">Settings</sys:String>
     <sys:String x:Key="Str_ErrorTitle">Error</sys:String>
     <sys:String x:Key="Str_ErrorMinutes">Enter a whole number of minutes (0 or more).</sys:String>
+    <sys:String x:Key="Str_ErrorMaxSweepHosts">Enter a whole number of hosts between 1 and 65536.</sys:String>
     <sys:String x:Key="Str_Done">Done</sys:String>
     <sys:String x:Key="Str_CacheCleared">Device cache cleared.</sys:String>
     <sys:String x:Key="Str_LanguageEnglish">English</sys:String>

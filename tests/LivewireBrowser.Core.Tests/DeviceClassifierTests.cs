@@ -18,6 +18,7 @@ public class DeviceClassifierTests
     [InlineData("Nx12 SYSV:1.2", DeviceCategory.TelephoneHybrid)]
     [InlineData("Z/IP ONE NSRC:1", DeviceCategory.Codec)]
     [InlineData("Sound4Streamer NSRC:2", DeviceCategory.Processor)]
+    [InlineData("Omnia.9", DeviceCategory.Processor)]
     [InlineData("Axia xNode Analog 4x4 I/O", DeviceCategory.AnalogNode)]
     [InlineData("Axia xNode Mixed Signal I/O", DeviceCategory.DigitalNode)]
     [InlineData("Axia xNode GPIO x6", DeviceCategory.Gpio)]

@@ -5,6 +5,8 @@ namespace LivewireBrowser.Core.Discovery;
 
 public class NetworkScanner
 {
+    private const int MaxConcurrentDetailProbes = 16;
+
     private readonly LwrpScanner _lwrpScanner;
     private readonly SapListener _sapListener;
     private readonly AdvertisementListener _advertisementListener;
@@ -25,7 +27,8 @@ public class NetworkScanner
     }
 
     public async Task<List<DeviceInfo>> FullScanAsync(TimeSpan timeout, IProgress<(int Completed, int Total)>? progress = null,
-        IProgress<string>? status = null, CancellationToken ct = default, DiscoveryMode mode = DiscoveryMode.BruteForceAndAdvertisement)
+        IProgress<string>? status = null, CancellationToken ct = default, DiscoveryMode mode = DiscoveryMode.BruteForceAndAdvertisement,
+        int maxSweepHosts = 4096)
     {
         Log.Info($"NetworkScanner: full scan started, timeout {timeout}, interface {NetworkInterfaceAddress ?? "(none selected)"}, mode {mode}");
 
@@ -58,7 +61,8 @@ public class NetworkScanner
         // off after just "BEGIN" and its actual SRC lines ended up logged under the
         // following "IP" query.
         var lwrpTask = bruteForce
-            ? _lwrpScanner.ScanSubnetAsync(NetworkInterfaceAddress, TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(800), progress, status, ct)
+            ? _lwrpScanner.ScanSubnetAsync(NetworkInterfaceAddress, TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(800),
+                progress, status, ct, maxHosts: maxSweepHosts)
             : Task.FromResult(new List<DeviceInfo>());
         var sapTask = advertisement
             ? _sapListener.ListenAsync(advertisementListenDuration, NetworkInterfaceAddress, ct)
@@ -73,6 +77,12 @@ public class NetworkScanner
         var channelsByIp = await sapTask;
         var advertisementByIp = await advertisementTask;
 
+        // Snapshot IPs the direct LWRP sweep actually reached, before the SAP/Advertisement
+        // merges and appends below run — used at the end of this method to find devices that
+        // still need a follow-up direct probe instead of relying on the user to click "Rescan"
+        // per device.
+        var sweepFoundIps = devices.Select(d => d.Ip).ToHashSet();
+
         foreach (var device in devices)
         {
             if (!channelsByIp.TryGetValue(device.Ip, out var sapChannels))
@@ -85,6 +95,25 @@ public class NetworkScanner
             }
 
             device.Channels = device.Channels.OrderBy(c => c.ChannelNumber).ToList();
+        }
+
+        // SAP is multicast-based and may see devices the TCP/93 subnet sweep missed
+        // entirely — list them too instead of silently dropping their channels (the
+        // merge loop above only touches devices already present in `devices`).
+        foreach (var (ip, sapChannels) in channelsByIp)
+        {
+            if (devices.Any(d => d.Ip == ip) || sapChannels.Count == 0)
+                continue;
+
+            devices.Add(new DeviceInfo
+            {
+                Ip = ip,
+                Model = "SAP announcement",
+                Name = $"Livewire device ({ip})",
+                Category = DeviceClassifier.Classify("SAP announcement"),
+                LastScanned = DateTime.UtcNow,
+                Channels = sapChannels.OrderBy(c => c.ChannelNumber).ToList(),
+            });
         }
 
         foreach (var device in devices)
@@ -128,6 +157,41 @@ public class NetworkScanner
                 LastScanned = DateTime.UtcNow,
                 Channels = advertised.Channels.OrderBy(c => c.ChannelNumber).ToList(),
             });
+        }
+
+        // Devices seen only via SAP/Advertisement never got a direct LWRP query, so they're
+        // missing category/channel detail. Probe them by IP directly — same mechanism as the
+        // manual "Rescan" button (RescanDeviceAsync) — bounded by a modest semaphore since this
+        // set is normally a handful of devices, not the whole subnet. Skipped entirely in
+        // AdvertisementOnly mode, which exists specifically to avoid opening any TCP/93
+        // connections.
+        if (bruteForce)
+        {
+            var incomplete = devices.Where(d => !sweepFoundIps.Contains(d.Ip)).ToList();
+            if (incomplete.Count > 0)
+            {
+                using var detailSemaphore = new SemaphoreSlim(MaxConcurrentDetailProbes);
+                var probeTasks = incomplete.Select(async device =>
+                {
+                    await detailSemaphore.WaitAsync(ct);
+                    try
+                    {
+                        return await RescanDeviceAsync(device, TimeSpan.FromSeconds(5), status, ct);
+                    }
+                    finally
+                    {
+                        detailSemaphore.Release();
+                    }
+                });
+
+                var probedResults = await Task.WhenAll(probeTasks);
+                foreach (var probedDevice in probedResults)
+                {
+                    var index = devices.FindIndex(d => d.Ip == probedDevice!.Ip);
+                    if (index >= 0)
+                        devices[index] = probedDevice!;
+                }
+            }
         }
 
         Log.Info($"NetworkScanner: full scan finished, {devices.Count} device(s) found");

@@ -243,10 +243,11 @@ public partial class MainViewModel : ObservableObject
 
     public AppSettings Settings => _settings;
 
-    public void ApplySettings(int autoRescanPeriodMinutes, string? networkInterfaceAddress, DiscoveryMode discoveryMode,
+    public void ApplySettings(int autoRescanPeriodMinutes, int maxSweepHosts, string? networkInterfaceAddress, DiscoveryMode discoveryMode,
         LogLevel logLevel, AppLanguage language)
     {
         _settings.AutoRescanPeriodMinutes = autoRescanPeriodMinutes;
+        _settings.MaxSweepHosts = maxSweepHosts;
         _settings.LivewireNetworkInterfaceAddress = networkInterfaceAddress;
         _settings.DiscoveryMode = discoveryMode;
         _settings.LogLevel = logLevel;
@@ -292,7 +293,8 @@ public partial class MainViewModel : ObservableObject
                 ScanProgressText = $"{p.Completed}/{p.Total}";
             });
 
-            var found = await _scanner.FullScanAsync(TimeSpan.FromSeconds(8), progress, _statusProgress, _scanCts.Token, _settings.DiscoveryMode);
+            var found = await _scanner.FullScanAsync(TimeSpan.FromSeconds(8), progress, _statusProgress, _scanCts.Token,
+                _settings.DiscoveryMode, _settings.MaxSweepHosts);
 
             // Dispose the outgoing DeviceViewModels before discarding them — each one
             // subscribes to the static Loc.LanguageChanged event, and without this a full

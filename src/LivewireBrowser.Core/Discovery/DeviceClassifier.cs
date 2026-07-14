@@ -29,6 +29,7 @@ public static class DeviceClassifier
         ["Nx12"] = DeviceCategory.TelephoneHybrid,
         ["Z/IP ONE"] = DeviceCategory.Codec,
         ["Sound4Streamer"] = DeviceCategory.Processor,
+        ["Omnia"] = DeviceCategory.Processor,
 
         // Classic (pre-xNode) Axia node firmware identifies itself only via DEVN,
         // confirmed against real 8x8 analog/AES nodes: "LiveIO" -> analog, "LiveAES"

@@ -240,9 +240,19 @@
                                         <TextBlock Text="{Binding Model}" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" />
                                     </StackPanel>
                                 </StackPanel>
-                                <Button Grid.Column="1" Content="{Binding RescanButtonText}" Tag="{Binding IsRescanning}" Padding="4,0"
-                                        VerticalAlignment="Center"
-                                        Command="{Binding RescanCommand}" Style="{StaticResource ToggleScanButtonStyle}" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Drawn as vector Path shapes, not a "Segoe MDL2 Assets" glyph — see the
+                                         About button above for why: that icon font doesn't exist on Windows 7. -->
+                                    <Button Padding="4" Margin="0,0,4,0" Style="{StaticResource SearchNavButtonStyle}"
+                                            Command="{Binding OpenInBrowserCommand}" ToolTip="{DynamicResource Str_OpenInBrowserTooltip}">
+                                        <Path Width="13" Height="13" Stretch="Uniform" Stroke="{StaticResource TextPrimaryBrush}"
+                                              StrokeThickness="1.3" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Data="M8,4 L1,4 L1,12 L9,12 L9,5 M5,8 L13,1 M9,1 L13,1 L13,5" />
+                                    </Button>
+                                    <Button Content="{Binding RescanButtonText}" Tag="{Binding IsRescanning}" Padding="4,0"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding RescanCommand}" Style="{StaticResource ToggleScanButtonStyle}" />
+                                </StackPanel>
                             </Grid>
                             <ListView ItemsSource="{Binding Channels}" BorderThickness="0" Background="Transparent"
                                       Margin="6,0,6,6"

@@ -17,6 +17,10 @@
         <TextBlock Text="{DynamicResource Str_RescanPeriodLabel}" />
         <TextBox x:Name="PeriodTextBox" Margin="0,4,0,12" Width="100" HorizontalAlignment="Left" />
 
+        <TextBlock Text="{DynamicResource Str_MaxSweepHostsLabel}" />
+        <TextBox x:Name="MaxSweepHostsTextBox" Margin="0,4,0,12" Width="100" HorizontalAlignment="Left"
+                 ToolTip="{DynamicResource Str_MaxSweepHostsTooltip}" />
+
         <TextBlock Text="{DynamicResource Str_LanguageLabel}" />
         <ComboBox x:Name="LanguageComboBox" Margin="0,4,0,12" Width="160" HorizontalAlignment="Left"
                   DisplayMemberPath="Label" />

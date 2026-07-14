@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -110,6 +111,19 @@ public partial class DeviceViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ToggleExpanded() => IsExpanded = !IsExpanded;
+
+    [RelayCommand]
+    private void OpenInBrowser()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = $"http://{Ip}", UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"DeviceViewModel: failed to open {Ip} in browser", ex);
+        }
+    }
 
     private void RefreshChannels()
     {

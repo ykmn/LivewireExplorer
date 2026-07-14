@@ -974,3 +974,28 @@ Implicit-стиль `<Style TargetType="Window">` в `Themes/DarkTheme.xaml` (б
 > Новый тип устройств: VX Engine относится к классу "Телефонные гибриды"
 
 **Ответ:** добавил `["VX Engine"] = DeviceCategory.TelephoneHybrid` в `DeviceClassifier.ModelMap` ([DeviceClassifier.cs](src/LivewireBrowser.Core/Discovery/DeviceClassifier.cs)), рядом с уже существующим `"VX Prime"`. Ключ длиннее бытового `"Engine"` (уже смэпленного на `DeviceCategory.Engine`), поэтому за счёт существующей сортировки по длине ключа (`OrderedEntries`) он перехватывает совпадение раньше — модели вида `"VX Engine ..."` теперь классифицируются как телефонный гибрид, а не Engine. Добавил тестовый случай `"Telos VX Engine"` в `DeviceClassifierTests`. Прогнал тесты — все 98 пройдены (97 + 1 новый).
+
+---
+
+## Запрос 67 (текущий, версия 1.00.001)
+
+> Устройства содержащие текст "Omnia" относить к классу "Процессоры"
+>
+> В карточку устройства добавить кнопку "Открыть в браузере" с иконкой без текста. По нажатию http://ip-адрес-устройства открывается в браузере по умолчанию.
+
+**Ответ:** добавил `["Omnia"] = DeviceCategory.Processor` в `DeviceClassifier.ModelMap` ([DeviceClassifier.cs](src/LivewireBrowser.Core/Discovery/DeviceClassifier.cs)), рядом с уже существующим `"Sound4Streamer"`; добавил тестовый случай `"Omnia.9"` в `DeviceClassifierTests`. Добавил в `DeviceViewModel` ([DeviceViewModel.cs](src/LivewireBrowser.App/ViewModels/DeviceViewModel.cs)) команду `OpenInBrowserCommand`, открывающую `http://{Ip}` через `Process.Start(UseShellExecute: true)` — тот же паттерн, что уже использовался в `AboutWindow`/`SettingsWindow` для открытия внешних ссылок/папок в системном приложении по умолчанию. В карточке устройства ([MainWindow.xaml](src/LivewireBrowser.App/MainWindow.xaml)) рядом с кнопкой "Пересканировать" добавил иконку-кнопку без текста (векторный `Path`, не глиф "Segoe MDL2 Assets" — тот же подход, что и у остальных иконок в проекте, ради совместимости с Windows 7), с тултипом из новых строк локализации `Str_OpenInBrowserTooltip` (ru/en). Прогнал тесты — все 99 пройдены (98 + 1 новый), сборка `LivewireBrowser.App` без ошибок.
+
+---
+
+## Запрос 68 (текущий, версия 1.00.002)
+
+> Есть ли возможность сканирования всего диапазона сети 255.255.0.0 ? Сейчас адрес 172.22.21.21 не попадает в скан. А у устройств с адресами 172.22.20.14, 172.22.21.12, 172.22.22.4 не определяются подробности устройства (класс, каналы) - приходится пересканировать вручную.
+
+**Ответ:** причина — жёсткий лимит `maxHosts = 4096` в `NetworkInterfaceHelper.GetHostAddresses` (диапазон всегда начинается с адреса сети, для /16 покрывает только третий октет 0–16), плюс то, что SAP-only устройства молча отбрасывались при мёрдже, а Advertisement-only устройства оставались с классом "Other" и без каналов, пока пользователь вручную не жал "Пересканировать".
+
+Сделал три взаимодополняющих исправления (согласовано с пользователем через уточняющие вопросы):
+1. **Лимит обхода теперь настраивается.** Новое поле `AppSettings.MaxSweepHosts` (по умолчанию 4096, до 65536) с полем в окне настроек ([SettingsWindow.xaml](src/LivewireBrowser.App/Views/SettingsWindow.xaml)/[.xaml.cs](src/LivewireBrowser.App/Views/SettingsWindow.xaml.cs), валидация 1–65536, локализованные подсказка и сообщение об ошибке), прокинуто через `MainViewModel.ApplySettings`/`ScanAsync` → `NetworkScanner.FullScanAsync` → `LwrpScanner.ScanSubnetAsync` → `NetworkInterfaceHelper.GetHostAddresses`. Битовую арифметику диапазона вынес в тестируемый `internal static GetHostAddressesForSubnet(uint ip, uint mask, int maxHosts)`, чтобы не зависеть от реальных сетевых адаптеров машины в тестах.
+2. **SAP-only устройства больше не теряются** — в `NetworkScanner.FullScanAsync` ([NetworkScanner.cs](src/LivewireBrowser.Core/Discovery/NetworkScanner.cs)) добавлен append-блок, зеркальный уже существовавшему для Advertisement-only устройств.
+3. **Автодоопрос по IP после скана** — устройства, не найденные напрямую LWRP-обходом (по снимку IP сразу после `lwrpTask`, до SAP/Advertisement-мёрджей), теперь автоматически доопрашиваются тем же `RescanDeviceAsync`, что и ручная кнопка "Пересканировать" (ограничено семафором на 16 параллельных запросов); при неудачном пробе уже найденные через SAP/Advertisement данные не теряются. Пропускается в режиме "Только объявления" (`AdvertisementOnly`), чтобы не превращать пассивный режим в скрытый TCP-скан.
+
+Добавил тесты: `NetworkInterfaceHelperTests` (новый файл, 3 теста на границы диапазона, включая регресс на `172.22.21.21`/`172.22.22.4` при поднятом лимите) и `AppSettingsTests.SaveThenLoad_RoundTripsMaxSweepHosts` + проверку дефолта. Обновил предупреждение про лимит хостов в README.md/README-ru.md. Прогнал тесты — все 103 пройдены (99 + 4 новых), сборка решения без ошибок и предупреждений.

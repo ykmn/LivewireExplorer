@@ -19,9 +19,10 @@ public class LwrpScanner
     private const int MaxConcurrentProbes = 64;
 
     public async Task<List<DeviceInfo>> ScanSubnetAsync(string? localInterfaceAddress, TimeSpan connectTimeout, TimeSpan queryTimeout,
-        IProgress<(int Completed, int Total)>? progress = null, IProgress<string>? status = null, CancellationToken ct = default)
+        IProgress<(int Completed, int Total)>? progress = null, IProgress<string>? status = null, CancellationToken ct = default,
+        int maxHosts = 4096)
     {
-        var hosts = NetworkInterfaceHelper.GetHostAddresses(localInterfaceAddress);
+        var hosts = NetworkInterfaceHelper.GetHostAddresses(localInterfaceAddress, maxHosts);
         if (hosts.Count == 0)
         {
             Log.Warn("LwrpScanner: no Livewire network interface selected (or it has no IPv4 address) — select one in Settings");

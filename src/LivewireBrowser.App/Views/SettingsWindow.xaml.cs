@@ -39,6 +39,7 @@ public partial class SettingsWindow : Window
         _mainViewModel = mainViewModel;
 
         PeriodTextBox.Text = _mainViewModel.Settings.AutoRescanPeriodMinutes.ToString();
+        MaxSweepHostsTextBox.Text = _mainViewModel.Settings.MaxSweepHosts.ToString();
         CachePathText.Text = new YamlDeviceCache().FilePath;
         LogPathText.Text = Log.LogDirectoryPath;
 
@@ -79,21 +80,24 @@ public partial class SettingsWindow : Window
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
     {
-        if (int.TryParse(PeriodTextBox.Text, out var minutes) && minutes >= 0)
+        if (!int.TryParse(PeriodTextBox.Text, out var minutes) || minutes < 0)
         {
-            var selectedInterface = InterfaceComboBox.SelectedItem as NetworkInterfaceInfo;
-            var selectedDiscoveryMode = (DiscoveryModeComboBox.SelectedItem as DiscoveryModeOption)?.Mode
-                ?? DiscoveryMode.BruteForceAndAdvertisement;
-            var selectedLogLevel = LogLevelComboBox.SelectedItem is LogLevel level ? level : LogLevel.Warn;
-            var selectedLanguage = (LanguageComboBox.SelectedItem as LanguageOption)?.Language ?? AppLanguage.English;
-            _mainViewModel.ApplySettings(minutes, selectedInterface?.IpAddress, selectedDiscoveryMode, selectedLogLevel, selectedLanguage);
-            Close();
+            MessageBox.Show(this, Loc.Get("Str_ErrorMinutes"), Loc.Get("Str_ErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
-        else
+        if (!int.TryParse(MaxSweepHostsTextBox.Text, out var maxSweepHosts) || maxSweepHosts is < 1 or > 65536)
         {
-            MessageBox.Show(this, Loc.Get("Str_ErrorMinutes"), Loc.Get("Str_ErrorTitle"),
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, Loc.Get("Str_ErrorMaxSweepHosts"), Loc.Get("Str_ErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
+
+        var selectedInterface = InterfaceComboBox.SelectedItem as NetworkInterfaceInfo;
+        var selectedDiscoveryMode = (DiscoveryModeComboBox.SelectedItem as DiscoveryModeOption)?.Mode
+            ?? DiscoveryMode.BruteForceAndAdvertisement;
+        var selectedLogLevel = LogLevelComboBox.SelectedItem is LogLevel level ? level : LogLevel.Warn;
+        var selectedLanguage = (LanguageComboBox.SelectedItem as LanguageOption)?.Language ?? AppLanguage.English;
+        _mainViewModel.ApplySettings(minutes, maxSweepHosts, selectedInterface?.IpAddress, selectedDiscoveryMode, selectedLogLevel, selectedLanguage);
+        Close();
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => Close();

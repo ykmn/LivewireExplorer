@@ -57,9 +57,18 @@ public static class NetworkInterfaceHelper
         if (nic == null)
             return new List<string>();
 
-        var ip = ToUInt32(IPAddress.Parse(nic.IpAddress).GetAddressBytes());
-        var mask = ToUInt32(IPAddress.Parse(nic.SubnetMask).GetAddressBytes());
+        return GetHostAddressesForSubnet(
+            ToUInt32(IPAddress.Parse(nic.IpAddress).GetAddressBytes()),
+            ToUInt32(IPAddress.Parse(nic.SubnetMask).GetAddressBytes()),
+            maxHosts);
+    }
 
+    /// <summary>
+    /// Pure host-enumeration math, split out from GetHostAddresses so it's testable without
+    /// depending on the test machine's actual network adapters.
+    /// </summary>
+    internal static List<string> GetHostAddressesForSubnet(uint ip, uint mask, int maxHosts)
+    {
         var network = ip & mask;
         var broadcast = network | ~mask;
 
